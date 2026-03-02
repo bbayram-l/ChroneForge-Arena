@@ -178,7 +178,7 @@ Includes:
 * 1 time mechanic (Rewind Core)
 
 Tech Stack:
-Unity 2D
+Godot 4 (GDScript)
 Custom physics-lite layer (don’t overengineer)
 Deterministic simulation for async PvP
 

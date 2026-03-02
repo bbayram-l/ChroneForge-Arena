@@ -1,0 +1,62 @@
+## GameState — global singleton (autoload)
+## Tracks run economy, round progression, and match results.
+extends Node
+
+signal gold_changed(new_amount: int)
+signal round_changed(new_round: int)
+signal run_ended(won: bool)
+
+var gold: int = 0
+var temporal_shards: int = 0
+var current_round: int = 1
+var win_streak: int = 0
+var loss_streak: int = 0
+var mmr: int = 1000
+
+const BASE_INCOME: int = 5
+const MAX_INTEREST: int = 5
+const WIN_BONUS: int = 2
+
+func start_run() -> void:
+	gold = BASE_INCOME
+	temporal_shards = 0
+	current_round = 1
+	win_streak = 0
+	loss_streak = 0
+
+func earn_round_income(won: bool) -> void:
+	var income := BASE_INCOME
+
+	# Interest: +1 per 10 gold saved, capped at 5
+	income += mini(gold / 10, MAX_INTEREST)
+
+	if won:
+		income += WIN_BONUS
+		win_streak += 1
+		loss_streak = 0
+		mmr += 25
+	else:
+		loss_streak += 1
+		win_streak = 0
+		mmr = maxi(0, mmr - 20)
+		# Loss streak consolation: +1–3 bonus
+		income += mini(loss_streak - 1, 3)
+
+	gold += income
+	current_round += 1
+	gold_changed.emit(gold)
+	round_changed.emit(current_round)
+
+func spend_gold(amount: int) -> bool:
+	if gold < amount:
+		return false
+	gold -= amount
+	gold_changed.emit(gold)
+	return true
+
+func get_reroll_cost() -> int:
+	if current_round <= 3:
+		return 2
+	elif current_round <= 7:
+		return 3
+	return 4
