@@ -1,0 +1,295 @@
+We’re not making “another autobattler.”
+We’re building something that pushes the genre forward.
+
+I’m merging two of the strongest ideas:
+
+* **Scrapyard Mechs** (physics + modular grid)
+* **Time Rift Battler** (temporal manipulation layer)
+
+This hybrid creates something mechanically deeper than **Down with the Ship**, not just thematically different.
+
+---
+
+# 🧠 Working Title: **ChronoForge Arena**
+
+> Build unstable modular mechs.
+> Break physics.
+> Bend time.
+> Out-engineer reality.
+
+---
+
+# 🔥 Why This Outclasses Down with the Ship
+
+Down with the Ship = adjacency optimization.
+
+ChronoForge = **adjacency + physics + timeline manipulation.**
+
+Three axes instead of one.
+
+| Layer         | Down with the Ship | ChronoForge                                 |
+| ------------- | ------------------ | ------------------------------------------- |
+| Spatial       | Grid adjacency     | Grid + center-of-mass + torque              |
+| Synergy       | Item combos        | Item + physics + timeline loops             |
+| Combat        | Deterministic auto | Probabilistic timeline branching            |
+| Failure State | HP loss            | HP + structural collapse + paradox overload |
+
+This multiplies build expression dramatically.
+
+---
+
+# ⚙️ Core Mechanics
+
+## 1️⃣ Modular Mech Grid (Base Layer)
+
+![Image](https://fbi.cults3d.com/uploaders/15405858/illustration-file/c6602940-ca1c-4179-892d-1f595bc359d3/Port-insta.jpg)
+
+![Image](https://media.licdn.com/dms/image/v2/D5612AQFCJyO6PPZkaQ/article-cover_image-shrink_720_1280/article-cover_image-shrink_720_1280/0/1723358867998?e=2147483647\&t=lpv-ll5-bqbHep4L1IUZRo8_Wn8sazVCT8vLuBttjQU\&v=beta)
+
+![Image](https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2328310/capsule_616x353.jpg?t=1734595775)
+
+![Image](https://mir-s3-cdn-cf.behance.net/project_modules/max_632_webp/02bf6875390437.5c4b105278fb2.png)
+
+* Square grid chassis
+* Modules have:
+
+  * Weight
+  * Power draw
+  * Heat generation
+  * Structural load
+  * Time cost
+
+If you stack cannons on one side?
+
+→ Torque imbalance
+→ Recoil pushes mech backward
+→ Accuracy drops
+
+Physics becomes a build consideration.
+
+---
+
+## 2️⃣ Structural Integrity System
+
+If weight distribution fails:
+
+* Mech tips over
+* Arm shears off
+* Reactor explodes
+
+This alone differentiates it from 99% of autobattlers.
+
+---
+
+## 3️⃣ Time Manipulation Layer (The Killer Feature)
+
+![Image](https://realtimevfx.com/uploads/default/original/3X/8/d/8dac61fa532db6c9bb9f6f44bc6d0a6cd44ccfd3.gif)
+
+![Image](https://randompowergenerator.com/_astro/time-rewind.Ox9VOuF8_1jLagd.webp)
+
+![Image](https://www.sinasamaki.com/content/images/size/w1200/2025/10/glitchEffect.jpg)
+
+![Image](https://forums.cdprojektred.com/data/attachments/151/151598-cafdcc342964cbbb3ac87336e7a330dc.jpg)
+
+Each mech has a **Timeline Track**.
+
+Players draft:
+
+* Rewind Core
+* Pre-Fire Predictor
+* Temporal Shield
+* Future Echo Cannon
+
+Example interactions:
+
+* Rewind Shield → resets shield to 2 seconds ago
+* Future Echo → fires ghost projectile from future state
+* Time Split → duplicates mech state for 1.5 seconds
+
+But:
+
+Using too much temporal tech causes **Paradox Overload**.
+
+If overload hits 100%:
+→ Random module permanently disappears mid-fight.
+
+High risk. High ceiling.
+
+---
+
+# 🎮 Core Gameplay Loop
+
+1. Draft modules
+2. Balance weight + heat + power
+3. Add timeline modifiers
+4. Auto-battle against async opponent
+5. Earn Scrap + Temporal Shards
+6. Upgrade chassis or unlock time archetypes
+
+---
+
+# 🏆 Modes
+
+### Ranked Ladder (Async PvP)
+
+Like Down with the Ship — but with replay viewer that shows:
+
+* Timeline branches
+* Physics impacts
+* Structural failure moments
+
+This makes watching fights entertaining.
+
+---
+
+### Bounty Mode
+
+Hunt unstable “Paradox Mechs”
+Defeat them → steal their timeline tech
+
+---
+
+### Endless Collapse Mode
+
+Physics becomes increasingly unstable each round
+Gravity shifts
+Time dilation increases
+
+Late game becomes chaos engineering.
+
+---
+
+# 💰 Monetizable Solo-Dev Roadmap
+
+We build this in phases.
+
+---
+
+## Phase 1 — Vertical Slice (3–4 Months)
+
+Goal:
+Playable demo for Steam Next Fest.
+
+Includes:
+
+* 60 modules
+* 3 chassis types
+* Basic physics (center-of-mass only)
+* 1 time mechanic (Rewind Core)
+
+Tech Stack:
+Unity 2D
+Custom physics-lite layer (don’t overengineer)
+Deterministic simulation for async PvP
+
+Monetization:
+Demo free
+Wishlist funnel
+
+---
+
+## Phase 2 — Early Access Launch (Month 6–8)
+
+Content:
+
+* 120+ modules
+* 5 time archetypes
+* Ranked ladder
+* Cosmetic mech skins
+
+Price:
+$14.99
+
+Why not F2P?
+Indie autobattlers succeed more reliably premium on Steam.
+
+---
+
+## Phase 3 — Live Expansion
+
+Quarterly updates:
+
+* New timeline mechanics
+* Rotating anomaly seasons
+* Community balance patches
+
+Cosmetics:
+
+* Reactor glow effects
+* Mech paint
+* Timeline distortion animations
+
+No pay-to-win.
+
+---
+
+# 🎯 Market Positioning
+
+Steam Tags:
+
+* Roguelike
+* Auto Battler
+* Mechs
+* Sci-Fi
+* Strategy
+* Physics
+
+Differentiator Messaging:
+
+> “The first autobattler where your mech can literally fall over.”
+
+That sells.
+
+---
+
+# 🔥 Mechanical Advantages Over Down with the Ship
+
+1. Adds physics-based failure
+2. Adds timeline layer
+3. Adds multi-axis optimization
+4. Increases spectator value
+5. Higher build variance ceiling
+
+Down with the Ship optimizes placement.
+
+ChronoForge optimizes:
+Placement + Mass + Heat + Power + Timeline Risk.
+
+That’s exponentially deeper.
+
+---
+
+# ⚖️ Scope Warning (Solo Dev Reality)
+
+Don’t:
+
+* Build full rigid-body simulation
+* Build real-time PvP
+* Add too many time mechanics early
+
+Keep:
+
+* Deterministic sim
+* Limited timeline triggers
+* Controlled physics approximation
+
+Depth through interaction, not asset count.
+
+---
+
+# If You Want Next Step
+
+We can:
+
+* Design full module taxonomy
+* Build economy model
+* Draft Steam page copy
+* Create MVP technical architecture
+* Break this into weekly dev sprints
+* Or pressure-test if this is realistically solo-dev viable
+
+Your move.
+
+If you build this right, it won’t just compete.
+
+It’ll redefine the niche.
