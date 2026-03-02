@@ -46,7 +46,7 @@ var _e_cooldowns: Dictionary = {}
 var _p_burst_ready: Dictionary = {}
 var _e_burst_ready: Dictionary = {}
 
-func _init(p_grid: MechGrid, e_grid: MechGrid, seed: int = 0) -> void:
+func _init(p_grid: MechGrid, e_grid: MechGrid, rng_seed: int = 0) -> void:
 	player_grid = p_grid
 	enemy_grid  = e_grid
 
@@ -64,7 +64,7 @@ func _init(p_grid: MechGrid, e_grid: MechGrid, seed: int = 0) -> void:
 	_e_paradox.module_disabled.connect(_on_module_disabled.bind(false))
 
 	rng = RandomNumberGenerator.new()
-	rng.seed = seed
+	rng.seed = rng_seed
 
 	player_hp     = _base_hp(player_grid)
 	player_shield = _base_shield(player_grid)
@@ -170,7 +170,7 @@ func _fire_weapon(weapon: Module, is_player: bool, power_state: Dictionary) -> v
 		return
 
 	# Build modifiers
-	var power_eff   := power_state.efficiency
+	var power_eff: float = power_state.efficiency
 	var stability   := physics.stability_modifier()
 	var heat_pen    := heat.overheat_penalty(pos)
 	var final_stab  := stability * (1.0 - heat_pen)
