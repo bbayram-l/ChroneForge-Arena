@@ -1,0 +1,469 @@
+Now we’re designing the system spine.
+
+If this layer is weak, the whole game collapses into meta abuse.
+So we design for:
+
+* Controlled power scaling
+* Build identity
+* Anti-runaway mechanics
+* Counterplay built into math
+
+Game: **ChronoForge Arena**
+
+---
+
+# 1️⃣ MODULE RARITY TIERS
+
+We don’t just assign rarity by “power.”
+We assign by **complexity + volatility + scaling potential**.
+
+---
+
+## 🟢 Common (Baseline Infrastructure)
+
+**Drop Rate:** 55%
+**Purpose:** Consistency tools
+**Power Profile:** Linear
+
+Examples:
+
+* Light Frame
+* Basic Reactor
+* Pulse Cannon
+* Heat Sink
+* Kinetic Plating
+
+Design Rule:
+Commons must be stable and reliable.
+No paradox generation.
+No exponential scaling.
+
+Stat Template:
+
+* Damage: 1.0x baseline
+* Heat: Low
+* Power draw: Efficient
+
+---
+
+## 🔵 Uncommon (Synergy Enablers)
+
+**Drop Rate:** 25%
+**Purpose:** Combo starters
+
+Examples:
+
+* Capacitor Bank
+* Shard Cannon
+* Reactive Armor
+* Gyro Stabilizer
+
+Traits:
+
+* Minor synergy triggers
+* Slight scaling
+* Small paradox interaction
+
+Stat Template:
+
+* Damage: 1.2–1.35x baseline
+* Heat: Moderate
+* Power draw: Slightly inefficient
+* May add +5–10 Paradox
+
+---
+
+## 🟣 Rare (Build Definers)
+
+**Drop Rate:** 12%
+**Purpose:** Archetype drivers
+
+Examples:
+
+* Echo Cannon
+* Overdrive Vent
+* Reflective Field
+* Pre-Fire Snapshot
+
+Traits:
+
+* Nonlinear scaling
+* Risk attached
+* Higher heat spikes
+* Paradox cost per second
+
+Stat Template:
+
+* Damage: 1.6–2.0x baseline
+* Heat: High
+* Paradox: 10–25/sec
+
+---
+
+## 🟠 Epic (Volatility Modules)
+
+**Drop Rate:** 6%
+**Purpose:** Meta disruptors
+
+Examples:
+
+* Timeline Split
+* Entropy Field
+* Paradox Reactor
+* Gravity Mine Array
+
+Traits:
+
+* Massive upside
+* High instability
+* Multiple resource drains
+
+Stat Template:
+
+* Damage: 2.5–3.5x baseline
+* Paradox: 30+/sec
+* Heat: Severe spikes
+
+---
+
+## 🔴 Legendary (Run-Warping Modules)
+
+**Drop Rate:** 2%
+**Purpose:** Endgame identity
+
+Examples:
+
+* Chrono Singularity Core
+* Infinite Recoil Rail
+* Time Collapse Bomb
+
+Traits:
+
+* Break baseline rules
+* Hard counters available
+* Extremely risky
+
+Stat Template:
+
+* Damage: Variable (conditional multipliers)
+* Paradox: 40–60/sec
+* Severe structural strain
+
+---
+
+### Rarity Design Rule
+
+Power increases with rarity.
+
+Stability decreases with rarity.
+
+If high rarity does not increase volatility, meta stagnates.
+
+---
+
+# 2️⃣ FIVE LAUNCH ARCHETYPES
+
+Each archetype should:
+
+* Have identity
+* Have weakness
+* Have counter
+* Use at least 3 system layers
+
+---
+
+## ⚙️ 1. Recoil Berserker
+
+Theme:
+High mass, massive cannons, unstable stance.
+
+Core Modules:
+
+* Railgun
+* Shock Bracing
+* Paradox Reactor
+* Reinforced Frame
+
+Strength:
+Explosive burst.
+
+Weakness:
+Accuracy penalty from torque.
+
+Counter:
+Light evasive builds.
+
+---
+
+## 🔥 2. Thermal Overdrive
+
+Theme:
+Intentional overheating for damage boost.
+
+Core Modules:
+
+* Overdrive Vent
+* Plasma Saw
+* Radiator Loop
+* Heat Amplifier
+
+Strength:
+Mid-fight power spike.
+
+Weakness:
+Sudden meltdown collapse.
+
+Counter:
+EMP or burst builds that deny ramp-up.
+
+---
+
+## ⏳ 3. Temporal Assassin
+
+Theme:
+Pre-fire + rewind + echo combos.
+
+Core Modules:
+
+* Pre-Fire Snapshot
+* Echo Cannon
+* Future Sight
+* Light Frame
+
+Strength:
+First-strike alpha damage.
+
+Weakness:
+Low durability.
+
+Counter:
+Reflective builds or shield reversion.
+
+---
+
+## 🛡 4. Fortress Stabilizer
+
+Theme:
+Balanced weight, shield stacking, no recoil.
+
+Core Modules:
+
+* Gyro Stabilizer
+* Energy Shield
+* Reactive Armor
+* Power Router
+
+Strength:
+Survivability.
+
+Weakness:
+Low DPS.
+
+Counter:
+Entropy builds or anti-shield modules.
+
+---
+
+## 🌀 5. Paradox Gambler
+
+Theme:
+Stack paradox intentionally.
+
+Core Modules:
+
+* Entropy Field
+* Timeline Split
+* Capacitor Bank
+* Micro Reactor
+
+Strength:
+Unpredictable explosive scaling.
+
+Weakness:
+Self-destruction chance.
+
+Counter:
+Sustained safe builds that outlast chaos.
+
+---
+
+These 5 archetypes create rock-paper-scissors meta tension.
+
+---
+
+# 3️⃣ FULL BALANCE MATH FORMULAS
+
+We design from a baseline unit.
+
+---
+
+## BASELINE STATS
+
+Define:
+Base HP = 100
+Base DPS = 10
+Base Power = 100
+Base Heat Tolerance = 100
+Base Paradox Tolerance = 100
+
+All modules scale relative to this.
+
+---
+
+# DAMAGE FORMULA
+
+For each weapon:
+
+Damage Output Per Shot:
+
+```
+FinalDamage = BaseDamage 
+              × PowerEfficiency 
+              × StabilityModifier 
+              × TemporalModifier 
+              × RandomVariance
+```
+
+---
+
+## Power Efficiency
+
+```
+PowerEfficiency = (AvailablePower / RequiredPower)
+```
+
+Capped at 1.2x.
+
+If below 1.0 → scaling penalty.
+
+---
+
+## Stability Modifier
+
+```
+StabilityModifier = 1 - (TorqueImbalance × 0.5)
+```
+
+TorqueImbalance = (WeightDifference / TotalWeight)
+
+If imbalance > 0.4 → 20% accuracy loss.
+
+---
+
+## Heat Scaling
+
+If quadrant heat > threshold:
+
+```
+OverheatPenalty = 1 - (ExcessHeat / MaxHeat)
+```
+
+Linear decay.
+
+At 150% heat:
+Module disabled.
+
+---
+
+## Paradox Scaling
+
+Each second:
+
+```
+Paradox += Σ(ModuleParadoxRate)
+```
+
+If Paradox > 100:
+
+```
+OverloadChance = (Paradox - 100) × 0.02
+```
+
+Roll per second:
+If success → random module disabled.
+
+---
+
+## Recoil Physics Approximation
+
+RecoilForce = WeaponMass × ShotForce
+
+Displacement:
+
+```
+Drift = RecoilForce / TotalMass
+```
+
+AccuracyPenalty:
+
+```
+AccuracyPenalty = Drift × 0.3
+```
+
+---
+
+## Shield Formula
+
+```
+EffectiveHP = HP + ShieldValue × RechargeEfficiency
+```
+
+Reactive Armor:
+
+```
+BurstReduction = IncomingDamage × 0.3 (once per 3 sec)
+```
+
+---
+
+# ECONOMIC SCALING FORMULA
+
+Shop rarity odds shift by round:
+
+Round 1–5:
+Common 70%
+Uncommon 25%
+Rare 5%
+
+Round 6–10:
+Common 50%
+Uncommon 30%
+Rare 15%
+Epic 5%
+
+Round 11+:
+Common 35%
+Uncommon 30%
+Rare 20%
+Epic 10%
+Legendary 5%
+
+This prevents early snowballing.
+
+---
+
+# META SAFETY SYSTEM
+
+To prevent “Steel Forger problem” (infinite scaling builds):
+
+Implement:
+
+Diminishing Return Formula:
+
+```
+StackModifier = 1 / (1 + 0.15 × (Stacks - 1))
+```
+
+Prevents exponential stacking.
+
+---
+
+# Final Design Philosophy
+
+Depth comes from:
+
+Placement × Physics × Heat × Paradox × Economy
+
+Not raw stat inflation.
+
+---
