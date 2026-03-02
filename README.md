@@ -181,7 +181,7 @@ Balance focuses on **failure mode tuning**, not blanket nerfs.
 
 # 🏗 MVP Technical Architecture
 
-Engine: Unity 2D (URP)
+Engine: Godot 4 (GDScript)
 
 ### Systems
 

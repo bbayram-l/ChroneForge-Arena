@@ -253,10 +253,12 @@ Keep it deterministic.
 
 ## Engine
 
-Unity 2D (URP)
+Godot 4 (GDScript)
 Reason:
-Fast iteration
-Deterministic simulation possible
+MIT licensed, no royalties
+Fast iteration with built-in TileMap and scene tree
+Deterministic simulation straightforward in GDScript
+Exports to Desktop, Web, and Mobile
 
 ---
 
@@ -322,7 +324,7 @@ No real-time network.
 
 Server optional at launch.
 Can use:
-PlayFab / custom lightweight backend.
+Nakama (open source) / custom lightweight backend.
 
 ---
 
