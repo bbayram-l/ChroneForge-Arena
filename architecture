@@ -1,0 +1,456 @@
+Game: **ChronoForge Arena**
+Goal: Solo-dev viable. Mechanically superior. Controlled scope.
+
+---
+
+# 1️⃣ FULL MODULE TAXONOMY
+
+We design modules by **System Layer**, not by flavor.
+
+This prevents feature creep.
+
+---
+
+## 🧱 A. Structural Modules (Chassis Layer)
+
+These define grid topology and physics behavior.
+
+| Type             | Function                    | Risk           |
+| ---------------- | --------------------------- | -------------- |
+| Light Frame      | +Grid slots, low weight     | Low HP         |
+| Reinforced Frame | +HP, heavier                | Torque stress  |
+| Gyro Stabilizer  | Reduces imbalance penalty   | Power drain    |
+| Shock Bracing    | Reduces recoil displacement | Adds weight    |
+| Joint Lock       | Prevents limb detachment    | Increases heat |
+
+Design rule:
+Structural modules never deal damage.
+They modify physics rules.
+
+---
+
+## ⚡ B. Power Modules
+
+All combat modules require power routing.
+
+| Type           | Effect                        | Risk                 |
+| -------------- | ----------------------------- | -------------------- |
+| Reactor Core   | Generates base power          | Heat spike           |
+| Micro Reactor  | Cheap, unstable               | Overload chance      |
+| Capacitor Bank | Stores burst power            | Explodes on overload |
+| Power Router   | Improves adjacency efficiency | Fragile              |
+
+Adjacency rule:
+Each adjacent power module grants +X% efficiency.
+
+---
+
+## 🔥 C. Weapon Modules
+
+Split by delivery model.
+
+### Direct Fire
+
+Railgun
+Pulse Cannon
+Plasma Saw
+
+### Projectile
+
+Missile Pod
+Cluster Rocket
+Shard Cannon
+
+### Area
+
+Shockwave Emitter
+EMP Burst
+Gravity Mine
+
+Each weapon has:
+
+* Power draw
+* Recoil force
+* Heat
+* Firing delay
+* Timeline cost
+
+Weapons generate torque. That matters.
+
+---
+
+## 🛡 D. Defense Modules
+
+Shields and mitigation must counter burst meta.
+
+| Type             | Effect                               |
+| ---------------- | ------------------------------------ |
+| Kinetic Plating  | Flat damage reduction                |
+| Reactive Armor   | Reduces next burst instance          |
+| Energy Shield    | Rechargeable buffer                  |
+| Reflective Field | Reflect % projectile damage          |
+| Temporal Barrier | Reverts damage taken in last 1.2 sec |
+
+Important:
+Armor must scale against burst or meta collapses.
+
+---
+
+## 🌡 E. Thermal Modules
+
+Prevents meltdown layer.
+
+Heat Sink
+Radiator Fan
+Liquid Coolant Loop
+Overdrive Vent (vent heat at HP cost)
+
+Heat is quadrant-based, not global.
+
+---
+
+## ⏳ F. Temporal Modules (Signature Layer)
+
+This is your mechanical edge.
+
+### Tier 1 (Safe)
+
+Rewind Shield
+Future Sight (+accuracy)
+Time Dilation (+initiative)
+
+### Tier 2 (Risk)
+
+Echo Cannon (duplicate projectile)
+Pre-Fire Snapshot (attack 0.5s early)
+Damage Revert (restore last 20% HP loss)
+
+### Tier 3 (Danger)
+
+Timeline Split (ghost clone for 1.5s)
+Entropy Field (random stat boost each second)
+Paradox Reactor (+50% power, +overload)
+
+Each temporal module adds:
+Paradox Load per second.
+
+At 100%:
+Random module permanently disabled.
+
+This creates high skill ceiling builds.
+
+---
+
+## 🧠 G. AI / Behavior Modules
+
+Add decision variance without real-time control.
+
+Targeting Matrix (focus lowest HP)
+Counter-Program (retaliate after hit)
+Burst Logic (wait for max capacitor)
+
+This increases build identity.
+
+---
+
+### Target Count for MVP
+
+| Category   | MVP Count |
+| ---------- | --------- |
+| Structural | 8         |
+| Power      | 10        |
+| Weapons    | 20        |
+| Defense    | 12        |
+| Thermal    | 8         |
+| Temporal   | 15        |
+| AI         | 7         |
+
+~80 modules total for Early Access.
+
+---
+
+# 2️⃣ ECONOMY MODEL
+
+Keep it clean.
+
+---
+
+## Run Economy
+
+Currency:
+
+* Scrap (common)
+* Temporal Shards (rare)
+
+Round Structure:
+
+* Base income: 5 Scrap
+* Interest: +1 per 10 saved (cap 5)
+* Win bonus: +2
+* Loss streak bonus: +1–3
+
+Standard autobattler economy.
+
+---
+
+## Shop Model
+
+5 items per shop roll.
+
+Reroll cost:
+2 Scrap early
+3 mid
+4 late
+
+Temporal modules appear at:
+
+* 10% early
+* 20% mid
+* 30% late
+
+Control power creep.
+
+---
+
+## Meta Progression (Light Touch)
+
+Persistent unlocks:
+
+* New chassis types
+* New temporal archetypes
+* Cosmetic skins
+
+No stat advantages.
+
+Unlock currency:
+Void Echoes (earned per run)
+
+---
+
+## Monetization
+
+Premium $14.99
+
+Cosmetics:
+
+* Mech skins
+* Reactor glow effects
+* Timeline distortion trails
+* Victory animations
+
+Future:
+$4.99 faction DLC packs (optional)
+
+No power purchases.
+
+---
+
+# 3️⃣ MVP TECHNICAL ARCHITECTURE
+
+Keep it deterministic.
+
+---
+
+## Engine
+
+Unity 2D (URP)
+Reason:
+Fast iteration
+Deterministic simulation possible
+
+---
+
+## Core Systems
+
+### 1. Grid System
+
+Data-driven 2D array.
+Each cell stores:
+
+* Module reference
+* Heat value
+* Structural load
+
+---
+
+### 2. Physics Lite Layer
+
+Not real physics engine.
+
+Compute:
+
+* Center of mass
+* Recoil impulse
+* Torque imbalance
+
+Apply:
+Accuracy penalty
+Movement drift
+Stagger chance
+
+No real-time rigid body simulation.
+
+---
+
+### 3. Simulation Engine
+
+Combat is:
+Tick-based deterministic loop.
+
+Each tick:
+
+* Resolve initiative
+* Resolve power draw
+* Apply recoil
+* Apply damage
+* Update heat
+* Update paradox
+
+This enables:
+Async PvP snapshots.
+
+---
+
+### 4. Async PvP
+
+Store:
+
+* Build config JSON
+* MMR rating
+
+No real-time network.
+
+Server optional at launch.
+Can use:
+PlayFab / custom lightweight backend.
+
+---
+
+### 5. Replay Viewer
+
+Record event log:
+
+* Timestamps
+* Damage
+* Overload triggers
+* Structural failure
+
+Replay is visualized from log.
+
+No video storage.
+
+---
+
+# 4️⃣ WEEKLY DEV SPRINT PLAN (16 WEEKS)
+
+---
+
+## Month 1 – Core Foundations
+
+### Week 1
+
+Grid system
+Module placement logic
+
+### Week 2
+
+Power routing adjacency
+Heat per quadrant
+
+### Week 3
+
+Combat tick loop
+Basic damage resolution
+
+### Week 4
+
+Simple UI + shop draft system
+
+Playable prototype end of Month 1.
+
+---
+
+## Month 2 – Physics & Identity
+
+### Week 5
+
+Center of mass calculation
+Recoil displacement
+
+### Week 6
+
+Structural integrity failure
+
+### Week 7
+
+Thermal overload system
+
+### Week 8
+
+AI behavior modules
+
+Now the game feels different.
+
+---
+
+## Month 3 – Temporal Layer
+
+### Week 9
+
+Paradox meter system
+
+### Week 10
+
+Rewind + Echo mechanics
+
+### Week 11
+
+Timeline split ghost logic
+
+### Week 12
+
+Balance pass + UI polish
+
+Core differentiator online.
+
+---
+
+## Month 4 – Polish & Content
+
+### Week 13
+
+Add 30 more modules
+
+### Week 14
+
+Async PvP snapshot system
+
+### Week 15
+
+Replay viewer
+
+### Week 16
+
+Steam demo build + optimization
+
+Ready for Next Fest.
+
+---
+
+# Final Reality Check
+
+Is this solo-dev viable?
+
+Yes — if:
+
+* Physics stays approximation-based
+* Temporal layer limited to 3–4 core mechanics at launch
+* Visuals are stylized, not realistic
+
+No — if:
+
+* You attempt real rigid-body physics
+* You attempt synchronous multiplayer
+* You over-expand module count
+
+---
