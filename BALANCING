@@ -1,0 +1,210 @@
+Here’s how you stop “one build dominates” without whack-a-mole nerfs.
+
+# Anti-meta balancing strategy
+
+## 1) Design for counters at the *system* level, not item level
+
+Every top archetype must have **at least two hard counters** that live in different categories (weapon/defense/temporal/AI). That way if one counter gets nerfed, the meta doesn’t collapse into the same top build again.
+
+**Counter matrix (launch target):**
+
+* **Burst/Alpha (Temporal Assassin, Recoil Berserker)**
+  Counters: **Reactive Armor** (burst damp), **Temporal Barrier** (damage revert), **Decoy Plating** (first-hit absorption), **Targeting Jammer AI** (forces retarget after first shot)
+* **Fortress (Shield/DR stacking)**
+  Counters: **EMP/Disruptor** (shield lock), **Heat Pressure** (overheat disables defenses), **Piercing/True damage** (limited, rare), **Entropy Field** (variance breaks static mitigation)
+* **Ramp/Scaling (Thermal Overdrive, Paradox Gambler)**
+  Counters: **Tempo denial** (Stun/Interrupt), **Cooling denial** (heat spike mines), **Paradox tax** (anti-temporal aura), **Sustained DPS** (outlast chaos)
+
+Rule: no archetype should be countered by *only one* silver-bullet module.
+
+---
+
+## 2) Make “infinite scaling” mathematically impossible
+
+The #1 meta killer is compounding loops. Fix it with **explicit ceilings** and **diminishing returns** that apply globally.
+
+### Global stacking cap types
+
+Use all three (don’t rely on one).
+
+**A) Soft cap (diminishing returns)**
+For any repeated buff source (gems, crew, upgrades, etc.):
+
+```text
+EffectiveBonus = BaseBonus × (1 / (1 + k × (Stacks - 1)))
+```
+
+Pick k per system:
+
+* damage stacking: k = 0.20
+* shield stacking: k = 0.25
+* cooldown reduction: k = 0.35 (very steep)
+
+**B) Hard cap**
+Certain multipliers must never exceed a ceiling:
+
+* Attack speed multiplier ≤ 2.0x
+* Shield recharge efficiency ≤ 1.8x
+* Power efficiency ≤ 1.2x
+* Paradox reduction ≤ 60%
+
+**C) Budget cap**
+Every build has a “budget” (power/heat/paradox). If you break budget, performance decays:
+
+* underpower: reduced fire rate
+* overheating: disable modules
+* paradox: random disable
+
+That budget creates natural limits.
+
+---
+
+## 3) Add “meta taxes” that scale with dominance
+
+Instead of nerfing a module into the ground, add a **system tax** that hits the *pattern*.
+
+### Example: Anti-burst tax
+
+If a build’s damage in the first 2 seconds exceeds threshold T:
+
+* Trigger **Burst Dampening** on defender: -X% incoming for 1 second (only once per fight)
+  This stops one-shot metas without killing burst builds entirely.
+
+### Example: Anti-shield tax
+
+If shield uptime > 80% over 6 seconds:
+
+* Apply **Shield Fatigue**: recharge rate drops by 30% until shield breaks once
+  Fortress stays viable but can’t be invulnerable.
+
+### Example: Anti-temporal spam tax
+
+Paradox already exists, but make it *shape* the meta:
+
+* If Temporal modules ≥ 4: Paradox gain +20%
+* If Temporal modules ≥ 6: Paradox gain +50% and “Overload roll” checks twice
+  This keeps time builds spicy but not mandatory.
+
+---
+
+## 4) Rarity is not “power”—rarity is “variance”
+
+A common mistake: legendaries become best-in-slot, always.
+
+Your rule:
+
+* **Common/Uncommon** = reliable baseline power
+* **Rare/Epic** = build-defining *risk/reward*
+* **Legendary** = rule-bending but **inconsistent** or **counterable**
+
+So when a Legendary dominates, players can tech against it, and it’s not always online.
+
+Implementation knobs:
+
+* Higher rarity increases:
+
+  * paradox/sec
+  * heat spikes
+  * structural stress
+  * conditional triggers (needs setup)
+
+---
+
+## 5) Ensure each archetype has a “failure mode” you can tune
+
+Balance is easiest when each archetype has a dial.
+
+Examples (what you tune during patches):
+
+* Recoil Berserker: recoil force, bracing effectiveness, accuracy curve
+* Fortress: shield fatigue rate, EMP duration, recharge efficiency cap
+* Thermal Overdrive: heat threshold, vent HP cost, disable duration
+* Temporal Assassin: prefiring window, rewind % cap, paradox ramp
+* Paradox Gambler: entropy variance range, overload frequency
+
+If a build is too strong, you tweak its failure mode—doesn’t gut the fantasy.
+
+---
+
+## 6) Use “tech slots” to force meta adaptation
+
+Give players **2–3 tech slots** in the build that can only hold “Counter Modules” (lightweight, low power).
+
+Examples:
+
+* EMP Needle (shield lock)
+* Gyro Clip (anti-recoil)
+* Heat Baffle (anti-thermal)
+* Chrono Anchor (anti-temporal)
+
+These are your meta pressure valves. They keep the ladder from calcifying.
+
+---
+
+## 7) Matchmaking protection for async PvP
+
+Meta dominance is worsened by mismatch exposure.
+
+Do two things:
+
+* **Ghost pool bands:** only fight builds within a narrow “round depth” + “MMR band”
+* **Outlier filtering:** if a ship has winrate > 65% in its band, it gets matched more often into hard counters (weighted)
+
+This is invisible to players but stabilizes perceived fairness.
+
+---
+
+## 8) Balance workflow that doesn’t burn a solo dev
+
+You need a repeatable loop.
+
+### Telemetry you must log
+
+Per match:
+
+* archetype classification (simple tags by module counts)
+* damage timeline (first 2s, 6s, total)
+* shield uptime %
+* overheat events
+* paradox overload events
+* module disable events
+* win/loss + round
+
+### Patch cadence
+
+* Hotfix only for exploits / degenerate infinite loops
+* Weekly micro-tunes (one dial per archetype max)
+* Monthly “meta shake” (add 1–2 new counter modules, rotate shop odds slightly)
+
+Never do sweeping changes weekly. It destroys trust.
+
+---
+
+## 9) “Degenerate build” checklist (you auto-nerf these fast)
+
+If any build has:
+
+* Winrate > 60% with pickrate > 15%
+* Or average fight time < 4 seconds (burst meta)
+* Or defensive uptime > 90% (stall meta)
+* Or paradox overload avoided with ≥ 6 temporal modules (time meta)
+
+You intervene immediately with:
+
+* tax increase
+* cap tightening
+* counter module drop rate boost
+
+Not direct module nerfs first.
+
+---
+
+## Concrete launch targets (what “healthy meta” looks like)
+
+* Top build winrate: **55–58%** (not 65%+)
+* At least **3 viable archetypes** at high MMR
+* Average fight length: **10–18 seconds**
+* Burst kills exist but are not majority
+* Fortress survives but can’t stalemate endlessly
+
+---
