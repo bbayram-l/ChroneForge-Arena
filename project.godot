@@ -9,7 +9,7 @@ config_version=5
 config/name="ChronoForge Arena"
 config/description="A deterministic, grid-based roguelike auto-battler. Build unstable modular mechs. Break physics. Bend time. Out-engineer reality."
 run/main_scene="res://scenes/Main.tscn"
-config/features=PackedStringArray("4.2", "Mobile")
+config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
 
 [autoload]
