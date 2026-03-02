@@ -22,7 +22,7 @@ func _load_modules() -> void:
 		push_error("ModuleRegistry: JSON parse error — " + json.get_error_message())
 		return
 
-	for entry: Dictionary in json.get_data():
+	for entry: Dictionary in json.data:
 		var mod := Module.new()
 		mod.id               = entry.get("id", "")
 		mod.display_name     = entry.get("name", "")
