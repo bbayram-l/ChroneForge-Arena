@@ -69,8 +69,8 @@ func _start_combat() -> void:
 	phase = Phase.COMBAT
 
 	# Seed from round so replays are reproducible
-	var seed := GameState.current_round * 1337 + GameState.mmr
-	engine = CombatEngine.new(player_grid, enemy_grid, seed)
+	var combat_seed := GameState.current_round * 1337 + GameState.mmr
+	engine = CombatEngine.new(player_grid, enemy_grid, combat_seed)
 	engine.combat_ended.connect(_on_combat_ended)
 
 	print("[Combat] Starting round %d simulation…" % GameState.current_round)
@@ -79,7 +79,7 @@ func _start_combat() -> void:
 
 func _on_combat_ended(result: Dictionary) -> void:
 	phase = Phase.ROUND_END
-	var won := result.winner == "player"
+	var won: bool = result.winner == "player"
 	GameState.earn_round_income(won)
 	print("[Round %d] %s — Gold: %d" % [
 		GameState.current_round,
