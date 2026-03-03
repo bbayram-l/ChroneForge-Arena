@@ -21,6 +21,7 @@ var engine:      CombatEngine
 var player_grid_view: MechGridView
 var enemy_grid_view:  MechGridView
 var shop_panel:       ShopPanel
+var hud_panel:        HudPanel
 var _status_label:    Label
 var _action_btn:      Button
 var _selected_offer:  Module = null
@@ -57,8 +58,9 @@ func _setup_ui() -> void:
 
 	# Player grid — left side
 	# 6×(64+4)−4 = 404 px wide. Two grids centred: (1280−404−80−404)/2 = 196 px margin
+	# y=50 leaves room for status bar above; HUD fits below at y=510
 	player_grid_view = MechGridView.new()
-	player_grid_view.position = Vector2(196.0, 140.0)
+	player_grid_view.position = Vector2(196.0, 50.0)
 	canvas.add_child(player_grid_view)
 	player_grid_view.set_title("PLAYER")
 	player_grid_view.cell_clicked.connect(_on_player_cell_clicked)
@@ -66,15 +68,21 @@ func _setup_ui() -> void:
 
 	# Enemy grid — right side
 	enemy_grid_view = MechGridView.new()
-	enemy_grid_view.position = Vector2(680.0, 140.0)
+	enemy_grid_view.position = Vector2(680.0, 50.0)
 	canvas.add_child(enemy_grid_view)
 	enemy_grid_view.set_title("ENEMY")
 	enemy_grid_view.refresh(enemy_grid)
 
-	# Shop panel — below grids
+	# HUD — stat bars below the player grid (grid height = 6×68−4 = 404 px, +50 offset = 454 → +30 gap = 484)
+	hud_panel = HudPanel.new()
+	hud_panel.position = Vector2(196.0, 484.0)
+	canvas.add_child(hud_panel)
+
+	# Shop panel — below HUD
 	# 5×210 + 4×14 = 1106 px → left margin (1280−1106)/2 = 87 px
+	# HUD bottom ≈ 484+72 = 556; shop at 566
 	shop_panel = ShopPanel.new()
-	shop_panel.position = Vector2(87.0, 562.0)
+	shop_panel.position = Vector2(87.0, 566.0)
 	canvas.add_child(shop_panel)
 	shop_panel.module_selected.connect(_on_module_selected)
 
@@ -94,6 +102,7 @@ func _give_starter_modules() -> void:
 	var core: Module = starters[0]
 	player_grid.place_module(Vector2i(2, 2), core)
 	player_grid_view.refresh(player_grid)
+	hud_panel.refresh(player_grid)
 	print("[Setup] Starter: %s placed (free)" % core.display_name)
 
 # ── Phase transitions ──────────────────────────────────────────────────────
@@ -143,6 +152,7 @@ func _on_combat_ended(result: Dictionary) -> void:
 	phase = Phase.ROUND_END
 	var won: bool = result.winner == "player"
 	GameState.earn_round_income(won)
+	hud_panel.refresh(player_grid)
 	_update_status("Last: %s" % ("WIN" if won else "LOSS"))
 	_action_btn.text     = "NEXT ROUND"
 	_action_btn.disabled = false
@@ -174,6 +184,7 @@ func _on_player_cell_clicked(pos: Vector2i) -> void:
 	if GameState.spend_gold(_selected_offer.cost):
 		player_grid.place_module(pos, _selected_offer)
 		player_grid_view.refresh(player_grid)
+		hud_panel.refresh(player_grid)
 		_update_status()
 		print("[Shop] Placed: %s at (%d,%d)" % [_selected_offer.display_name, pos.x, pos.y])
 		_selected_offer = null

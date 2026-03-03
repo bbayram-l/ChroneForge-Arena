@@ -19,11 +19,12 @@ func _init(mech_grid: MechGrid) -> void:
 	grid = mech_grid
 
 ## Called once per combat tick. Accumulates paradox and rolls for overload.
-func tick(delta: float, rng: RandomNumberGenerator) -> void:
+## rate_mult < 1.0 when the opponent has a chrono_anchor active.
+func tick(delta: float, rng: RandomNumberGenerator, rate_mult: float = 1.0) -> void:
 	# Accumulate from ALL modules with paradox_rate (echo_cannon, temporal_barrier, etc.)
 	for mod in grid.get_all_modules():
 		if mod.paradox_rate > 0.0 and not mod.disabled:
-			paradox += mod.paradox_rate * delta
+			paradox += mod.paradox_rate * delta * rate_mult
 
 	# Apply meta taxes
 	var t_count := _temporal_count()

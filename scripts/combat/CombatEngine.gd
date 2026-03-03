@@ -108,8 +108,11 @@ func _tick() -> void:
 	var d := TICK_RATE
 
 	# 1. Paradox accumulation + overload rolls
-	_p_paradox.tick(d, rng)
-	_e_paradox.tick(d, rng)
+	# chrono_anchor: owning side's anchor reduces the OPPONENT's paradox gain rate by 20%
+	var p_pdx_mult := 0.80 if _has_module(enemy_grid, "chrono_anchor") else 1.0
+	var e_pdx_mult := 0.80 if _has_module(player_grid, "chrono_anchor") else 1.0
+	_p_paradox.tick(d, rng, p_pdx_mult)
+	_e_paradox.tick(d, rng, e_pdx_mult)
 
 	# 2. Heat dissipation
 	_p_heat.dissipate(d)
@@ -174,8 +177,16 @@ func _fire_weapon(weapon: Module, is_player: bool) -> void:
 	var heat_pen    := heat.overheat_penalty(pos)
 	var final_stab  := stability * (1.0 - heat_pen)
 
+	# AI modifiers
+	# targeting_matrix: +10% damage (focused fire on weakest point)
+	var dmg_mult := 1.10 if _has_module(grid, "targeting_matrix") else 1.0
+	# burst_logic: 1.4× damage but 2× cooldown (charges up before releasing)
+	var burst := _has_module(grid, "burst_logic")
+	if burst:
+		dmg_mult *= 1.4
+
 	# Resolve damage
-	var damage := DamageResolver.resolve_shot(weapon, power_eff, final_stab, 1.0, rng)
+	var damage := DamageResolver.resolve_shot(weapon, power_eff, final_stab, 1.0, rng) * dmg_mult
 
 	# Side effects
 	physics.apply_recoil(weapon)
@@ -187,8 +198,9 @@ func _fire_weapon(weapon: Module, is_player: bool) -> void:
 	else:
 		_deal_to_player(damage, weapon)
 
-	# Reset cooldown
-	cds[wid] = 1.0 / weapon.fire_rate if weapon.fire_rate > 0.0 else 9999.0
+	# Reset cooldown (burst_logic doubles the interval)
+	var base_cd := 1.0 / weapon.fire_rate if weapon.fire_rate > 0.0 else 9999.0
+	cds[wid] = base_cd * (2.0 if burst else 1.0)
 
 	_log("shot", is_player, {
 		"module":     wid,
@@ -203,11 +215,28 @@ func _deal_to_player(raw: float, _source: Module) -> void:
 	var res := DamageResolver.apply_shield(raw, player_shield, 1.0)
 	player_shield = maxf(0.0, player_shield - res.shield_damage)
 	player_hp     = maxf(0.0, player_hp     - res.hp_damage)
+	# counter_program: retaliate with best available weapon after taking HP damage
+	if res.hp_damage > 0.0 and _has_module(player_grid, "counter_program"):
+		_counter_shot(true)
 
 func _deal_to_enemy(raw: float, _source: Module) -> void:
 	var res := DamageResolver.apply_shield(raw, enemy_shield, 1.0)
 	enemy_shield = maxf(0.0, enemy_shield - res.shield_damage)
 	enemy_hp     = maxf(0.0, enemy_hp     - res.hp_damage)
+	# counter_program: retaliate with best available weapon after taking HP damage
+	if res.hp_damage > 0.0 and _has_module(enemy_grid, "counter_program"):
+		_counter_shot(false)
+
+## Fire the highest-damage ready weapon as a counter-program retaliation.
+func _counter_shot(is_player: bool) -> void:
+	var grid := player_grid if is_player else enemy_grid
+	var best: Module = null
+	for mod: Module in grid.get_all_modules():
+		if mod.category == Module.Category.WEAPON and not mod.disabled and mod.fire_rate > 0.0:
+			if best == null or mod.base_damage > best.base_damage:
+				best = mod
+	if best:
+		_fire_weapon(best, is_player)
 
 # ── Paradox overload callback ──────────────────────────────────────────────
 

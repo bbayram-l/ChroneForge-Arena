@@ -28,6 +28,8 @@ var _title_label:  Label
 var _current_grid: MechGrid  = null
 var _highlighted:  Array     = []            # Array[Vector2i] valid-placement positions
 var _hovered_pos:  Vector2i  = Vector2i(-1, -1)
+var _com:          Vector2   = Vector2(3.0, 3.0)   # center-of-mass in grid coords
+var _show_com:     bool      = false
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -84,9 +86,15 @@ func set_title(text: String) -> void:
 ## Redraw every cell to match the current grid state.
 func refresh(grid: MechGrid) -> void:
 	_current_grid = grid
+	# Update center-of-mass for torque visualizer
+	var mods := grid.get_all_modules()
+	_show_com = not mods.is_empty()
+	if _show_com:
+		_com = PhysicsLite.new(grid).center_of_mass()
 	for y in range(MechGrid.GRID_HEIGHT):
 		for x in range(MechGrid.GRID_WIDTH):
 			_redraw_cell(Vector2i(x, y))
+	queue_redraw()
 
 ## Highlight cells where `module` can be placed on `grid`.
 func highlight_valid(module: Module, grid: MechGrid) -> void:
@@ -106,6 +114,27 @@ func clear_highlights() -> void:
 	_hovered_pos = Vector2i(-1, -1)
 	if _current_grid:
 		refresh(_current_grid)
+
+# ── Torque visualizer ───────────────────────────────────────────────────────
+
+func _draw() -> void:
+	if not _show_com:
+		return
+	var step := float(CELL_SIZE + CELL_GAP)
+	# Ideal balance point — centre of 6×6 grid in pixel space
+	var ideal := Vector2(MechGrid.GRID_WIDTH, MechGrid.GRID_HEIGHT) * step * 0.5
+	# Actual centre-of-mass in pixel space
+	var com_px := _com * step
+
+	# Dim crosshair at ideal centre
+	draw_line(ideal - Vector2(9, 0), ideal + Vector2(9, 0), Color(1, 1, 1, 0.25), 1.0)
+	draw_line(ideal - Vector2(0, 9), ideal + Vector2(0, 9), Color(1, 1, 1, 0.25), 1.0)
+	draw_circle(ideal, 3.0, Color(1, 1, 1, 0.25))
+
+	# Orange COM indicator + line showing offset from ideal
+	if (com_px - ideal).length() > 3.0:
+		draw_line(ideal, com_px, Color("ff6030aa"), 1.5)
+	draw_circle(com_px, 5.0, Color("ff6030"))
 
 # ── Internal rendering ──────────────────────────────────────────────────────
 

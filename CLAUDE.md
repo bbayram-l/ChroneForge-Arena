@@ -57,8 +57,11 @@ scripts/
     ShopSystem.gd           Rarity-weighted rolls, temporal bias, reroll
   ui/
     Main.gd                 Game-loop coordinator: shop → combat → round end
+    MechGridView.gd         Programmatic 6×6 panel grid + torque visualizer overlay
+    ShopPanel.gd            5-card rarity-coloured shop with module_selected signal
+    HudPanel.gd             PWR/STAB/HEAT bars + PDX rate / AI info line
 data/
-  modules.json              35 MVP modules across 7 categories
+  modules.json              36 MVP modules across 7 categories
 ```
 
 ---
@@ -107,9 +110,9 @@ No real-time multiplayer. Enemy grids are serialized snapshots. `MechGrid.serial
 - [x] Click-to-place module UI — `ShopPanel` cards + cell click → placement flow
 - [x] Enemy mech generator — 3 seeded archetypes (BRAWLER / FORTRESS / SKIRMISHER)
 - [x] Round loop — READY button starts combat, NEXT ROUND continues
-- [ ] HUD — heat bars per quadrant, paradox meter, power state indicator
-- [ ] Torque visualizer — center-of-mass marker on grid
-- [ ] AI module logic — `targeting_matrix`, `burst_logic`, `counter_program` effects
+- [x] HUD — `HudPanel`: PWR / STAB / HEAT progress bars with traffic-light colour, PDX rate + AI info line
+- [x] Torque visualizer — `MechGridView._draw()` overlays orange COM dot + white ideal-centre crosshair
+- [x] AI module logic — `targeting_matrix` (+10% dmg), `burst_logic` (1.4× dmg / 2× CD), `counter_program` (retaliation shot), `chrono_anchor` (20% opponent PDX reduction)
 
 ### Month 1 cross-check bugs fixed
 - `ParadoxSystem._trigger_overload` used global `randi()` → now uses seeded `rng` (determinism fix)
