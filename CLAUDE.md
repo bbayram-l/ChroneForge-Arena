@@ -88,7 +88,7 @@ No real-time multiplayer. Enemy grids are serialized snapshots. `MechGrid.serial
 ## What is built (Month 1 MVP — complete)
 
 - [x] Grid system — 6×6 placement, adjacency queries, serialization
-- [x] Module data — 35 modules: STRUCTURAL / POWER / WEAPON / DEFENSE / THERMAL / TEMPORAL / AI
+- [x] Module data — 36 modules: STRUCTURAL(5) / POWER(4) / WEAPON(8) / DEFENSE(5) / THERMAL(4) / TEMPORAL(6) / AI(4)
 - [x] Power system — generation, draw, adjacency efficiency
 - [x] Heat system — quadrant tracking, dissipation, overheat penalties
 - [x] Physics-lite — center-of-mass, torque imbalance, recoil displacement
@@ -103,13 +103,24 @@ No real-time multiplayer. Enemy grids are serialized snapshots. `MechGrid.serial
 
 ## What comes next (Month 2)
 
-- [ ] Visual grid scene — `TileMap` or `GridContainer` for the 6×6 mech builder
-- [ ] Drag-and-drop module placement UI
+- [x] Visual grid scene — `MechGridView` (programmatic 6×6 panel grid, category-coloured)
+- [x] Click-to-place module UI — `ShopPanel` cards + cell click → placement flow
+- [x] Enemy mech generator — 3 seeded archetypes (BRAWLER / FORTRESS / SKIRMISHER)
+- [x] Round loop — READY button starts combat, NEXT ROUND continues
 - [ ] HUD — heat bars per quadrant, paradox meter, power state indicator
 - [ ] Torque visualizer — center-of-mass marker on grid
-- [ ] Shop UI — card display with rarity colour coding
 - [ ] AI module logic — `targeting_matrix`, `burst_logic`, `counter_program` effects
-- [ ] Enemy mech generator — simple archetype-based builds for async PvP prototype
+
+### Month 1 cross-check bugs fixed
+- `ParadoxSystem._trigger_overload` used global `randi()` → now uses seeded `rng` (determinism fix)
+- `ParadoxSystem.tick()` only accumulated from TEMPORAL category → now uses `paradox_rate > 0` (catches echo_cannon, temporal_barrier)
+- `CombatEngine._fire_weapon()` used pre-capped global power ratio → now computes `raw_ratio × cell_efficiency` so adjacency bonus is actually applied
+
+### Known gaps (deferred Month 3+)
+- gyro_stabilizer / shock_bracing stat effects not wired in PhysicsLite
+- power_router enhanced adjacency (+10%) not wired in PowerSystem
+- emp_burst lock, capacitor_bank explosion, all Temporal specials — unimplemented
+- PhysicsLite.accuracy_penalty() computed but not fed into damage formula
 
 Month 3 → temporal system effects, paradox visuals, balance pass
 Month 4 → async PvP snapshots, replay viewer, Steam demo build

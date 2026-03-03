@@ -126,16 +126,13 @@ func _tick() -> void:
 	_advance_cooldowns(_e_burst_ready, d)
 
 	# 5. Fire weapons
-	var p_power := _p_power.get_state()
-	var e_power := _e_power.get_state()
-
 	for mod in player_grid.get_all_modules():
 		if mod.category == Module.Category.WEAPON and not mod.disabled:
-			_fire_weapon(mod, true, p_power)
+			_fire_weapon(mod, true)
 
 	for mod in enemy_grid.get_all_modules():
 		if mod.category == Module.Category.WEAPON and not mod.disabled:
-			_fire_weapon(mod, false, e_power)
+			_fire_weapon(mod, false)
 
 	# 6. Snapshot for replay
 	_log_tick_state()
@@ -146,7 +143,7 @@ func _advance_cooldowns(map: Dictionary, delta: float) -> void:
 
 # ── Weapon firing ──────────────────────────────────────────────────────────
 
-func _fire_weapon(weapon: Module, is_player: bool, power_state: Dictionary) -> void:
+func _fire_weapon(weapon: Module, is_player: bool) -> void:
 	var wid := weapon.id
 
 	# Init cooldown slot
@@ -159,18 +156,20 @@ func _fire_weapon(weapon: Module, is_player: bool, power_state: Dictionary) -> v
 	if cds[wid] > 0.0:
 		return
 
-	var grid    := player_grid if is_player else enemy_grid
-	var heat    := _p_heat    if is_player else _e_heat
-	var physics := _p_physics if is_player else _e_physics
-	var pos     := grid.get_module_position(weapon)
+	var grid      := player_grid if is_player else enemy_grid
+	var heat      := _p_heat    if is_player else _e_heat
+	var physics   := _p_physics if is_player else _e_physics
+	var power_sys := _p_power   if is_player else _e_power
+	var pos       := grid.get_module_position(weapon)
 
 	# Heat disable check
 	if heat.is_disabled_by_heat(pos):
 		_log("heat_disable", is_player, {"module": wid})
 		return
 
-	# Build modifiers
-	var power_eff: float = power_state.efficiency
+	# Build modifiers — per-cell efficiency applies the adjacency bonus (+5% per power neighbour)
+	var raw_ratio  := power_sys.total_generation() / power_sys.total_draw() if power_sys.total_draw() > 0.0 else 1.0
+	var power_eff: float = minf(raw_ratio * power_sys.cell_efficiency(pos), PowerSystem.MAX_EFFICIENCY)
 	var stability   := physics.stability_modifier()
 	var heat_pen    := heat.overheat_penalty(pos)
 	var final_stab  := stability * (1.0 - heat_pen)

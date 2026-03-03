@@ -20,9 +20,9 @@ func _init(mech_grid: MechGrid) -> void:
 
 ## Called once per combat tick. Accumulates paradox and rolls for overload.
 func tick(delta: float, rng: RandomNumberGenerator) -> void:
-	# Accumulate from all active temporal modules
+	# Accumulate from ALL modules with paradox_rate (echo_cannon, temporal_barrier, etc.)
 	for mod in grid.get_all_modules():
-		if mod.category == Module.Category.TEMPORAL and not mod.disabled:
+		if mod.paradox_rate > 0.0 and not mod.disabled:
 			paradox += mod.paradox_rate * delta
 
 	# Apply meta taxes
@@ -41,15 +41,16 @@ func _try_overload(rng: RandomNumberGenerator, delta: float) -> void:
 		return
 	var chance := (paradox - OVERLOAD_THRESHOLD) * OVERLOAD_RATE * delta
 	if rng.randf() < chance:
-		_trigger_overload()
+		_trigger_overload(rng)
 
-func _trigger_overload() -> void:
+func _trigger_overload(rng: RandomNumberGenerator) -> void:
 	var candidates := grid.get_all_modules().filter(
 		func(m: Module) -> bool: return not m.disabled
 	)
 	if candidates.is_empty():
 		return
-	var target: Module = candidates[randi() % candidates.size()]
+	# Use seeded rng — determinism requires no global randi() in combat
+	var target: Module = candidates[rng.randi() % candidates.size()]
 	target.disabled = true
 	module_disabled.emit(target)
 

@@ -10,16 +10,16 @@ var _pool: Array[Module] = []
 var rng: RandomNumberGenerator
 var current_shop: Array[Module] = []
 
-func _init(module_pool: Array[Module], seed: int = 0) -> void:
+func _init(module_pool: Array[Module], rng_seed: int = 0) -> void:
 	_pool = module_pool
 	rng   = RandomNumberGenerator.new()
-	rng.seed = seed
+	rng.seed = rng_seed
 
 # ── Rarity odds ────────────────────────────────────────────────────────────
 
 ## Returns weight table keyed by Module.Rarity for the given round.
-static func rarity_weights(round: int) -> Dictionary:
-	if round <= 5:
+static func rarity_weights(current_round: int) -> Dictionary:
+	if current_round <= 5:
 		return {
 			Module.Rarity.COMMON:    70,
 			Module.Rarity.UNCOMMON:  25,
@@ -27,7 +27,7 @@ static func rarity_weights(round: int) -> Dictionary:
 			Module.Rarity.EPIC:       0,
 			Module.Rarity.LEGENDARY:  0,
 		}
-	elif round <= 10:
+	elif current_round <= 10:
 		return {
 			Module.Rarity.COMMON:    50,
 			Module.Rarity.UNCOMMON:  30,
@@ -44,29 +44,48 @@ static func rarity_weights(round: int) -> Dictionary:
 	}
 
 ## Chance that a given slot is forced to a temporal module.
-static func temporal_chance(round: int) -> float:
-	if round <= 5:  return 0.10
-	if round <= 10: return 0.20
+static func temporal_chance(current_round: int) -> float:
+	if current_round <= 5:  return 0.10
+	if current_round <= 10: return 0.20
 	return 0.30
 
 # ── Shop generation ────────────────────────────────────────────────────────
 
-func roll_shop(round: int) -> Array[Module]:
+func roll_shop(current_round: int) -> Array[Module]:
 	current_shop.clear()
-	var weights  := rarity_weights(round)
-	var t_chance := temporal_chance(round)
+	var weights  := rarity_weights(current_round)
+	var t_chance := temporal_chance(current_round)
 
-	for _i in range(SHOP_SIZE):
+	# Slot 0 is always a weapon — players should never be locked out of offence
+	var weapon := _pick_module_of_category(Module.Category.WEAPON, weights)
+	if weapon != null:
+		current_shop.append(weapon)
+
+	# Fill remaining slots normally
+	var remaining := SHOP_SIZE - current_shop.size()
+	for _i in range(remaining):
 		var mod := _pick_module(weights, t_chance)
 		if mod != null:
 			current_shop.append(mod)
 
 	return current_shop
 
-func reroll(round: int) -> Array[Module]:
-	return roll_shop(round)
+func reroll(current_round: int) -> Array[Module]:
+	return roll_shop(current_round)
 
 # ── Internal ───────────────────────────────────────────────────────────────
+
+## Picks a module of a specific category, respecting the rarity weights.
+## Falls back to any rarity of that category if the rolled rarity has none.
+func _pick_module_of_category(cat: Module.Category, weights: Dictionary) -> Module:
+	var rarity := _roll_rarity(weights)
+	var candidates := _pool.filter(func(m: Module) -> bool:
+		return m.category == cat and m.rarity == rarity)
+	if candidates.is_empty():
+		candidates = _pool.filter(func(m: Module) -> bool: return m.category == cat)
+	if candidates.is_empty():
+		return null
+	return candidates[rng.randi() % candidates.size()]
 
 func _pick_module(weights: Dictionary, t_chance: float) -> Module:
 	var rarity := _roll_rarity(weights)

@@ -4,6 +4,7 @@ extends Node
 
 signal gold_changed(new_amount: int)
 signal round_changed(new_round: int)
+@warning_ignore("UNUSED_SIGNAL")
 signal run_ended(won: bool)
 
 var gold: int = 0
@@ -28,6 +29,7 @@ func earn_round_income(won: bool) -> void:
 	var income := BASE_INCOME
 
 	# Interest: +1 per 10 gold saved, capped at 5
+	@warning_ignore("INTEGER_DIVISION")
 	income += mini(gold / 10, MAX_INTEREST)
 
 	if won:

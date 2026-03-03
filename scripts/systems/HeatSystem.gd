@@ -20,7 +20,9 @@ func _init(mech_grid: MechGrid) -> void:
 # ── Quadrant mapping ───────────────────────────────────────────────────────
 
 func quadrant_of(pos: Vector2i) -> Quadrant:
+	@warning_ignore("INTEGER_DIVISION")
 	var mid_x := MechGrid.GRID_WIDTH  / 2
+	@warning_ignore("INTEGER_DIVISION")
 	var mid_y := MechGrid.GRID_HEIGHT / 2
 	if pos.x < mid_x and pos.y < mid_y:
 		return Quadrant.TOP_LEFT
