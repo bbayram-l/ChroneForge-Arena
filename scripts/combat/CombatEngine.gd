@@ -134,8 +134,18 @@ func run_simulation() -> Dictionary:
 		winner = "draw"
 	elif player_hp <= 0.0:
 		winner = "enemy"
-	else:
+	elif enemy_hp <= 0.0:
 		winner = "player"
+	else:
+		# Timeout: compare HP as a % of each side's starting max
+		var p_pct := player_hp / maxf(_base_hp(player_grid), 1.0)
+		var e_pct := enemy_hp  / maxf(_base_hp(enemy_grid),  1.0)
+		if absf(p_pct - e_pct) < 0.10:
+			winner = "draw"
+		elif p_pct > e_pct:
+			winner = "player"
+		else:
+			winner = "enemy"
 
 	var result := {
 		"winner":              winner,

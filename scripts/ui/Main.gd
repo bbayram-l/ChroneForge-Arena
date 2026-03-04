@@ -202,8 +202,10 @@ func _update_status(suffix: String = "") -> void:
 	_status_label.text = text
 
 func _print_combat_summary(result: Dictionary) -> void:
-	print("[Combat] Winner: %s | Player HP: %.1f | Enemy HP: %.1f | Ticks: %d (%.1fs)" % [
+	var timeout_tag := " [TIMEOUT]" if result.ticks >= CombatEngine.MAX_TICKS else ""
+	print("[Combat] Winner: %s%s | Player HP: %.1f | Enemy HP: %.1f | Ticks: %d (%.1fs)" % [
 		result.winner,
+		timeout_tag,
 		result.player_hp_remaining,
 		result.enemy_hp_remaining,
 		result.ticks,
