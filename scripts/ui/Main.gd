@@ -30,6 +30,7 @@ var _sell_btn:        Button
 var _run_over_panel:  Control
 var _selected_offer:  Module = null
 var _sell_mode:       bool   = false
+var _protected_cells: Array[Vector2i] = []
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -166,6 +167,7 @@ func _give_starter_modules() -> void:
 	starters.sort_custom(func(a: Module, b: Module) -> bool: return a.cost < b.cost)
 	var core: Module = starters[0]
 	player_grid.place_module(Vector2i(2, 2), core)
+	_protected_cells.append(Vector2i(2, 2))
 	player_grid_view.refresh(player_grid)
 	hud_panel.refresh(player_grid)
 	print("[Setup] Starter: %s placed (free)" % core.display_name)
@@ -272,6 +274,7 @@ func _on_action_pressed() -> void:
 func _on_restart_pressed() -> void:
 	_run_over_panel.visible = false
 	# Clear player grid
+	_protected_cells.clear()
 	player_grid = MechGrid.new("player")
 	enemy_grid  = MechGrid.new("enemy")
 	player_grid_view.refresh(player_grid)
@@ -298,6 +301,8 @@ func _on_player_cell_clicked(pos: Vector2i) -> void:
 	if _sell_mode:
 		var cell := player_grid.get_cell(pos)
 		if cell == null or cell.is_empty():
+			return
+		if pos in _protected_cells:
 			return
 		var mod: Module = cell.module
 		@warning_ignore("INTEGER_DIVISION")
