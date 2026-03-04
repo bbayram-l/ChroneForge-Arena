@@ -160,12 +160,26 @@ No real-time multiplayer. Enemy grids are serialized snapshots. `MechGrid.serial
 - [x] Timeout balance fix — HP% comparison at MAX_TICKS (10% threshold → draw); enemy wins if ahead
 - [x] Enemy scaling fix — 4-tier slot system: 4–6 modules (T0) → 7–9 (T1) → 10–12 (T2) → 12–14 (T3)
 
-### Known gaps (deferred Month 5+)
-- Module upgrade / star system (gold sink for late game)
+## What is built (Month 5 — complete)
+
+- [x] Module upgrade system — UPGRADE button in shop phase; click any placed module to spend gold
+  and advance it from ★1 → ★2 → ★3 (max). Cost = `cost × current_star_level`.
+- [x] Stat boost — each star: base_damage / power_gen / shield_value / heat_reduction / hp × 1.2×
+- [x] Duplicate on placement — `MechGrid.place_module` now duplicates the Module Resource so every
+  placed copy has independent stats/star_level/disabled state; fixes shared-reference bugs
+- [x] Serialize star_level — `player_grid.json` snapshot now includes star levels; deserialize
+  re-applies upgrades so async PvP replays see correct stats
+- [x] Star display — upgraded cells show ★ / ★★ beneath the module name in MechGridView
+- [x] Sell refund includes upgrade investment — refund = `cost × star_level / 2`
+
+### Known gaps (deferred Month 6+)
 - Async PvP: upload grid snapshot to server, download opponent, replay viewer
 - Steam demo build, achievements, leaderboard
+- More modules (target 60 for demo; currently 36)
+- `joint_lock` stat effect not wired
+- Overload flash / visual feedback on module disable
 
-Month 5 → module upgrades, async PvP server, Steam demo
+Month 6 → async PvP server foundation, more modules, Steam demo prep
 
 ---
 
