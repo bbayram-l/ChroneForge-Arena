@@ -125,7 +125,29 @@ No real-time multiplayer. Enemy grids are serialized snapshots. `MechGrid.serial
 - emp_burst lock, capacitor_bank explosion, all Temporal specials — unimplemented
 - PhysicsLite.accuracy_penalty() computed but not fed into damage formula
 
-Month 3 → temporal system effects, paradox visuals, balance pass
+## What is built (Month 3 — complete)
+
+- [x] Physics gaps wired — `gyro_stabilizer` (-30% torque in `stability_modifier`), `shock_bracing` (-50% recoil in `apply_recoil`)
+- [x] `power_router` — doubles adjacency bonus to +10% per power neighbor in `PowerSystem.cell_efficiency`
+- [x] `accuracy_penalty` fed into damage formula — `(1 − acc_pen)` multiplier in `CombatEngine._fire_weapon`; `future_sight` reduces it by 0.15
+- [x] `emp_burst` — locks one random opponent module for 3 s with timed re-enable; no direct damage
+- [x] `reactive_armor` — 30% burst reduction once every 3 s (uses existing `_p/_e_burst_ready` timers)
+- [x] `reflective_field` — reflects 20% of raw incoming damage back at attacker
+- [x] `future_sight` — 10% incoming shot dodge chance; -15% accuracy penalty on owned weapons
+- [x] `pre_fire_snapshot` — all weapons fire once before the main loop starts
+- [x] `rewind_shield` — restores shield to 2-second-ago snapshot on first depletion (one-shot)
+- [x] `overdrive_vent` — dumps all quadrant heat when any quadrant hits DISABLE_THRESHOLD; costs 15 HP
+- [x] `timeline_split` — 2× damage multiplier on all weapons for first 1.5 seconds of combat
+- [x] `entropy_field` — reduces opponent weapon damage by 15% every second (floor 0.3×)
+- [x] `capacitor_bank` — explodes on paradox overload; 30 self-damage to owning mech
+- [x] HudPanel paradox bar — purple 4th row, PDX +/s rate; turns red above 30/s
+
+### Known gaps (deferred Month 4+)
+- `joint_lock` stat effect not wired (no combat mechanic defined yet)
+- Paradox meter live update during combat (HUD shows build-time rate only)
+- Overload flash / visual feedback on module disable
+- `temporal_barrier` DEFENSE special (paradox_rate accumulates correctly; counter mechanic TBD)
+
 Month 4 → async PvP snapshots, replay viewer, Steam demo build
 
 ---

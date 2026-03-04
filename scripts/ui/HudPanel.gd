@@ -15,6 +15,8 @@ var _stab_fill:   ColorRect
 var _stab_lbl:    Label
 var _heat_fill:   ColorRect
 var _heat_lbl:    Label
+var _pdx_fill:    ColorRect
+var _pdx_lbl:     Label
 var _info_lbl:    Label
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -27,6 +29,7 @@ func _build() -> void:
 		["PWR",  0,          Color("30b040"), "_power_fill", "_power_lbl"],
 		["STAB", ROW_H,      Color("30a0e0"), "_stab_fill",  "_stab_lbl"],
 		["HEAT", ROW_H * 2,  Color("e06010"), "_heat_fill",  "_heat_lbl"],
+		["PDX",  ROW_H * 3,  Color("7030b0"), "_pdx_fill",   "_pdx_lbl"],
 	]
 
 	for row in rows:
@@ -65,15 +68,15 @@ func _build() -> void:
 		add_child(val_lbl)
 		set(lbl_key, val_lbl)
 
-	# Info line — paradox rate + heat balance
+	# Info line — active AI module names
 	_info_lbl = Label.new()
-	_info_lbl.position = Vector2(0.0, float(ROW_H * 3 + 2))
+	_info_lbl.position = Vector2(0.0, float(ROW_H * 4 + 2))
 	_info_lbl.size     = Vector2(404.0, float(ROW_H))
 	_info_lbl.add_theme_font_size_override("font_size", 10)
 	_info_lbl.modulate = Color(0.75, 0.75, 0.75)
 	add_child(_info_lbl)
 
-	custom_minimum_size = Vector2(404.0, float(ROW_H * 4))
+	custom_minimum_size = Vector2(404.0, float(ROW_H * 5))
 
 # ── Public API ──────────────────────────────────────────────────────────────
 
@@ -114,13 +117,14 @@ func refresh(grid: MechGrid) -> void:
 	_heat_fill.color = _traffic_color(1.0 - heat_pressure, Color("e06010"))
 	_heat_lbl.text   = "%+.0f/s" % (-net_heat_rate)
 
-	# Info line
-	var parts: PackedStringArray = []
-	if pdx_rate > 0.0:
-		parts.append("PDX +%.0f/s" % pdx_rate)
-	if not ai_modules.is_empty():
-		parts.append("AI: " + ", ".join(ai_modules))
-	_info_lbl.text = "  ".join(parts) if not parts.is_empty() else ""
+	# Paradox rate (max display = 50/s; danger colour above 30/s)
+	const PDX_DISPLAY_MAX: float = 50.0
+	_set_bar(_pdx_fill, pdx_rate / PDX_DISPLAY_MAX)
+	_pdx_fill.color = Color("7030b0") if pdx_rate < 30.0 else Color("c03020")
+	_pdx_lbl.text   = "+%.0f/s" % pdx_rate
+
+	# Info line — AI modules active
+	_info_lbl.text = ("AI: " + ", ".join(ai_modules)) if not ai_modules.is_empty() else ""
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 

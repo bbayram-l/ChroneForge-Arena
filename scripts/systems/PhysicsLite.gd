@@ -36,8 +36,12 @@ func torque_imbalance() -> float:
 	return clampf((com - ideal).length() / max_dist, 0.0, 1.0)
 
 ## StabilityModifier from SYSTEM doc: 1 − (TorqueImbalance × 0.5)
+## gyro_stabilizer: reduces effective torque imbalance by 30%.
 func stability_modifier() -> float:
-	return 1.0 - torque_imbalance() * 0.5
+	var ti := torque_imbalance()
+	if _has_module("gyro_stabilizer"):
+		ti *= 0.70
+	return 1.0 - ti * 0.5
 
 # ── Recoil ─────────────────────────────────────────────────────────────────
 
@@ -47,7 +51,9 @@ func apply_recoil(weapon: Module) -> void:
 		total_mass += mod.weight
 	if total_mass <= 0.0:
 		return
-	recoil_displacement += weapon.recoil_force / total_mass
+	# shock_bracing: reduces recoil accumulation by 50%
+	var factor := 0.5 if _has_module("shock_bracing") else 1.0
+	recoil_displacement += weapon.recoil_force / total_mass * factor
 
 ## Returns combined accuracy penalty (0.0–0.5).
 func accuracy_penalty() -> float:
@@ -58,3 +64,11 @@ func accuracy_penalty() -> float:
 ## Call each tick to decay accumulated displacement.
 func decay_displacement(delta: float) -> void:
 	recoil_displacement = maxf(0.0, recoil_displacement - delta * 2.0)
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+
+func _has_module(module_id: String) -> bool:
+	for mod in grid.get_all_modules():
+		if mod.id == module_id and not mod.disabled:
+			return true
+	return false

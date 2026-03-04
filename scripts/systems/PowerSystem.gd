@@ -25,15 +25,20 @@ func total_draw() -> float:
 	return total
 
 ## Returns the adjacency-boosted efficiency for the module at `pos`.
+## power_router neighbor doubles the per-power-neighbor bonus to +10%.
 func cell_efficiency(pos: Vector2i) -> float:
 	var cell := grid.get_cell(pos)
 	if cell == null or cell.is_empty():
 		return 1.0
 	var power_neighbors := 0
+	var has_router := false
 	for adj in grid.get_adjacent_modules(pos):
 		if adj.category == Module.Category.POWER:
 			power_neighbors += 1
-	return minf(1.0 + power_neighbors * ADJACENCY_BONUS, MAX_EFFICIENCY)
+		if adj.id == "power_router" and not adj.disabled:
+			has_router = true
+	var bonus := ADJACENCY_BONUS * 2.0 if has_router else ADJACENCY_BONUS
+	return minf(1.0 + power_neighbors * bonus, MAX_EFFICIENCY)
 
 ## Returns the global power state used each combat tick.
 func get_state() -> Dictionary:
