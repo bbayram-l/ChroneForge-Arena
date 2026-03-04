@@ -189,13 +189,23 @@ No real-time multiplayer. Enemy grids are serialized snapshots. `MechGrid.serial
   next time the same round comes up there is a 30% chance to load it instead of generating
   a new procedural enemy (async PvP simulation foundation)
 
-### Known gaps (deferred Month 7+)
-- `joint_lock` stat effect not wired
-- Overload flash / visual feedback on module disable
-- Real async PvP server (upload/download grids, leaderboard)
-- Steam demo build, achievements
+## What is built (Month 7 — complete)
 
-Month 7 → visual polish (overload flash, combat log UI), Steam demo prep
+- [x] Disabled-module visual — overloaded/heat-disabled cells render darkened (0.65×) in MechGridView;
+  both grids refresh immediately after `run_simulation()` so the state is visible before NEXT ROUND
+- [x] Hover tooltip — hovering any player grid cell shows a sidebar panel with full module stats,
+  star level, upgrade cost (or DISABLED / MAX STAR status)
+- [x] Combat log — label below the enemy grid shows post-fight summary: outcome, total damage +
+  shot counts per side, last 7 notable events (dodges, overloads, EMP, reflect, rewind, vent, reactive)
+- [x] MechGridView `cell_hovered` / `cell_unhovered` signals added
+
+### Known gaps (deferred Month 8+)
+- `joint_lock` stat effect not wired
+- Real async PvP server (upload/download grids, leaderboard)
+- Steam demo build: export preset, main menu, resolution toggle, splash screen
+- Balance pass now that 60 modules exist
+
+Month 8 → Steam demo prep (main menu, export, resolution), balance pass
 
 ---
 
