@@ -45,9 +45,11 @@ func can_place(pos: Vector2i, mod: Module) -> bool:
 func place_module(pos: Vector2i, mod: Module) -> bool:
 	if not can_place(pos, mod):
 		return false
-	for dy in range(mod.grid_size.y):
-		for dx in range(mod.grid_size.x):
-			get_cell(Vector2i(pos.x + dx, pos.y + dy)).place_module(mod)
+	# Duplicate so each placed copy has independent runtime state (star_level, disabled, stats).
+	var placed_mod := mod.duplicate() as Module
+	for dy in range(placed_mod.grid_size.y):
+		for dx in range(placed_mod.grid_size.x):
+			get_cell(Vector2i(pos.x + dx, pos.y + dy)).place_module(placed_mod)
 	return true
 
 func remove_module_at(pos: Vector2i) -> Module:
@@ -108,7 +110,7 @@ func serialize() -> Dictionary:
 						already_logged = true
 						break
 				if not already_logged:
-					placed.append({"pos": [x, y], "module_id": cell.module.id})
+					placed.append({"pos": [x, y], "module_id": cell.module.id, "star_level": cell.module.star_level})
 	return {"owner": owner_id, "cells": placed}
 
 static func deserialize(data: Dictionary) -> MechGrid:
@@ -118,4 +120,10 @@ static func deserialize(data: Dictionary) -> MechGrid:
 		var mod: Module = ModuleRegistry.get_module(entry.module_id)
 		if mod != null:
 			grid.place_module(pos, mod)
+			# Restore star upgrades (place_module already duplicated the module)
+			var star: int = entry.get("star_level", 1)
+			var cell := grid.get_cell(pos)
+			if cell != null:
+				for _i in range(star - 1):
+					cell.module.upgrade()
 	return grid

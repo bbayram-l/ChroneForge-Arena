@@ -155,7 +155,11 @@ func _redraw_cell(pos: Vector2i) -> void:
 			final_color = base.lightened(0.3)
 
 	_apply_style(panel, final_color)
-	label.text = "" if cell.is_empty() else cell.module.display_name
+	if cell.is_empty():
+		label.text = ""
+	else:
+		var stars := "★".repeat(cell.module.star_level - 1)
+		label.text = cell.module.display_name + ("\n" + stars if stars else "")
 
 func _apply_style(panel: Panel, color: Color) -> void:
 	var style := StyleBoxFlat.new()

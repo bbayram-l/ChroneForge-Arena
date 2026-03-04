@@ -27,9 +27,11 @@ var _status_label:    Label
 var _action_btn:      Button
 var _reroll_btn:      Button
 var _sell_btn:        Button
+var _upgrade_btn:     Button
 var _run_over_panel:  Control
 var _selected_offer:  Module = null
 var _sell_mode:       bool   = false
+var _upgrade_mode:    bool   = false
 var _protected_cells: Array[Vector2i] = []
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -78,6 +80,14 @@ func _setup_ui() -> void:
 	_sell_btn.text     = "SELL MODULE"
 	_sell_btn.pressed.connect(_on_sell_pressed)
 	canvas.add_child(_sell_btn)
+
+	# Upgrade button — toggles upgrade mode in shop phase
+	_upgrade_btn = Button.new()
+	_upgrade_btn.position = Vector2(1090.0, 114.0)
+	_upgrade_btn.size     = Vector2(172.0, 28.0)
+	_upgrade_btn.text     = "UPGRADE (★)"
+	_upgrade_btn.pressed.connect(_on_upgrade_pressed)
+	canvas.add_child(_upgrade_btn)
 
 	# Player grid — left side
 	# 6×(64+4)−4 = 404 px wide. Two grids centred: (1280−404−80−404)/2 = 196 px margin
@@ -177,8 +187,10 @@ func _give_starter_modules() -> void:
 func _enter_shop_phase() -> void:
 	phase = Phase.SHOP_PHASE
 	_selected_offer = null
-	_sell_mode = false
-	_sell_btn.text = "SELL MODULE"
+	_sell_mode    = false
+	_upgrade_mode = false
+	_sell_btn.text    = "SELL MODULE"
+	_upgrade_btn.text = "UPGRADE (★)"
 	player_grid_view.clear_highlights()
 
 	# Reset any overload-disabled modules from the previous fight
@@ -200,15 +212,18 @@ func _enter_shop_phase() -> void:
 	_action_btn.disabled = false
 	_reroll_btn.text     = "REROLL (%dg)" % GameState.get_reroll_cost()
 	_reroll_btn.disabled = false
-	_sell_btn.disabled   = false
+	_sell_btn.disabled    = false
+	_upgrade_btn.disabled = false
 	_update_status()
 
 func _start_combat() -> void:
 	phase = Phase.COMBAT
-	_action_btn.disabled = true
-	_reroll_btn.disabled = true
-	_sell_btn.disabled   = true
-	_sell_mode = false
+	_action_btn.disabled  = true
+	_reroll_btn.disabled  = true
+	_sell_btn.disabled    = true
+	_upgrade_btn.disabled = true
+	_sell_mode    = false
+	_upgrade_mode = false
 	_selected_offer = null
 	player_grid_view.clear_highlights()
 
@@ -288,8 +303,10 @@ func _on_restart_pressed() -> void:
 # ── Shop interaction ───────────────────────────────────────────────────────
 
 func _on_module_selected(mod: Module) -> void:
-	_sell_mode = false
-	_sell_btn.text = "SELL MODULE"
+	_sell_mode    = false
+	_upgrade_mode = false
+	_sell_btn.text    = "SELL MODULE"
+	_upgrade_btn.text = "UPGRADE (★)"
 	_selected_offer = mod
 	player_grid_view.highlight_valid(mod, player_grid)
 
@@ -297,7 +314,7 @@ func _on_player_cell_clicked(pos: Vector2i) -> void:
 	if phase != Phase.SHOP_PHASE:
 		return
 
-	# Sell mode: sell the module at this cell for half its cost
+	# Sell mode: sell the module at this cell for half its total cost (base + upgrades)
 	if _sell_mode:
 		var cell := player_grid.get_cell(pos)
 		if cell == null or cell.is_empty():
@@ -306,14 +323,34 @@ func _on_player_cell_clicked(pos: Vector2i) -> void:
 			return
 		var mod: Module = cell.module
 		@warning_ignore("INTEGER_DIVISION")
-		var refund: int = mod.cost / 2
+		var refund: int = mod.cost * mod.star_level / 2
 		player_grid.remove_module_at(pos)
 		GameState.gold += refund
 		GameState.gold_changed.emit(GameState.gold)
 		player_grid_view.refresh(player_grid)
 		hud_panel.refresh(player_grid)
 		_update_status()
-		print("[Sell] Sold: %s for %dg" % [mod.display_name, refund])
+		print("[Sell] Sold: %s ★%d for %dg" % [mod.display_name, mod.star_level, refund])
+		return
+
+	# Upgrade mode: spend gold to boost a placed module's stats
+	if _upgrade_mode:
+		var cell := player_grid.get_cell(pos)
+		if cell == null or cell.is_empty():
+			return
+		var mod: Module = cell.module
+		if mod.star_level >= Module.MAX_STARS:
+			print("[Upgrade] %s is already max star (★%d)" % [mod.display_name, Module.MAX_STARS])
+			return
+		var ucost := mod.upgrade_cost()
+		if not GameState.spend_gold(ucost):
+			print("[Upgrade] Not enough gold (need %d, have %d)" % [ucost, GameState.gold])
+			return
+		mod.upgrade()
+		player_grid_view.refresh(player_grid)
+		hud_panel.refresh(player_grid)
+		_update_status()
+		print("[Upgrade] %s → ★%d (%dg spent)" % [mod.display_name, mod.star_level, ucost])
 		return
 
 	# Normal placement mode
@@ -343,12 +380,28 @@ func _on_sell_pressed() -> void:
 		return
 	_sell_mode = not _sell_mode
 	if _sell_mode:
-		_sell_btn.text = "CANCEL SELL"
-		_selected_offer = null
+		_sell_btn.text    = "CANCEL SELL"
+		_upgrade_mode     = false
+		_upgrade_btn.text = "UPGRADE (★)"
+		_selected_offer   = null
 		shop_panel.deselect()
 		player_grid_view.clear_highlights()
 	else:
 		_sell_btn.text = "SELL MODULE"
+
+func _on_upgrade_pressed() -> void:
+	if phase != Phase.SHOP_PHASE:
+		return
+	_upgrade_mode = not _upgrade_mode
+	if _upgrade_mode:
+		_upgrade_btn.text = "CANCEL UPGRADE"
+		_sell_mode        = false
+		_sell_btn.text    = "SELL MODULE"
+		_selected_offer   = null
+		shop_panel.deselect()
+		player_grid_view.clear_highlights()
+	else:
+		_upgrade_btn.text = "UPGRADE (★)"
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 

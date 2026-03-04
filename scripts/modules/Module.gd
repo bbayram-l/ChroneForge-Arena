@@ -42,3 +42,23 @@ enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
 
 # Runtime flag — set by ParadoxSystem on overload
 var disabled: bool = false
+
+# ── Upgrade system ──────────────────────────────────────────────────────────
+const MAX_STARS: int = 3
+var star_level: int = 1  # 1 = base; goes up to MAX_STARS
+
+## Cost to upgrade from current star_level to the next.
+func upgrade_cost() -> int:
+	return cost * star_level  # ★1→★2 = cost×1, ★2→★3 = cost×2
+
+## Boost all positive combat stats by 20% and increment star_level.
+func upgrade() -> void:
+	if star_level >= MAX_STARS:
+		return
+	star_level += 1
+	var boost := 1.20
+	base_damage    *= boost
+	power_gen      *= boost
+	heat_reduction *= boost
+	hp             *= boost
+	shield_value   *= boost
