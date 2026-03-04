@@ -48,6 +48,7 @@ func _build() -> void:
 		add_child(tag_lbl)
 
 		var track := ColorRect.new()
+		@warning_ignore("INTEGER_DIVISION")
 		track.position = Vector2(float(LBL_W), float(y_off + (ROW_H - BAR_H) / 2))
 		track.size     = Vector2(float(BAR_W), float(BAR_H))
 		track.color    = Color("222222")
@@ -86,7 +87,7 @@ func refresh(grid: MechGrid) -> void:
 
 	# Power
 	var p_state := power_sys.get_state()
-	var eff     := p_state.efficiency
+	var eff: float = p_state.efficiency
 	_set_bar(_power_fill, eff / PowerSystem.MAX_EFFICIENCY)
 	_power_fill.color = _traffic_color(eff / PowerSystem.MAX_EFFICIENCY, Color("30b040"))
 	_power_lbl.text   = "%.0f%%" % (eff * 100.0)
