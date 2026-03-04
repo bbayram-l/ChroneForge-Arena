@@ -228,7 +228,17 @@ func _start_combat() -> void:
 	player_grid_view.clear_highlights()
 
 	var combat_seed := GameState.current_round * 1337 + GameState.mmr
-	enemy_grid = EnemyMechGenerator.generate(GameState.current_round, combat_seed)
+
+	# Ghost ladder: 30% chance to face a previously saved opponent build
+	var ghost := _try_load_ghost(GameState.current_round)
+	if ghost != null and randi() % 100 < 30:
+		enemy_grid = ghost
+		print("[PvP] Using ghost grid for round %d" % GameState.current_round)
+	else:
+		enemy_grid = EnemyMechGenerator.generate(GameState.current_round, combat_seed)
+
+	# Save this enemy grid for future ghost use
+	_save_ghost_grid(enemy_grid, GameState.current_round)
 	enemy_grid_view.refresh(enemy_grid)
 
 	engine = CombatEngine.new(player_grid, enemy_grid, combat_seed)
@@ -436,6 +446,29 @@ func _save_player_grid() -> void:
 	if file:
 		file.store_string(json)
 		file.close()
+
+func _save_ghost_grid(grid: MechGrid, round_num: int) -> void:
+	var data := grid.serialize()
+	var json := JSON.stringify(data, "\t")
+	var file := FileAccess.open("user://ghost_%d.json" % round_num, FileAccess.WRITE)
+	if file:
+		file.store_string(json)
+		file.close()
+
+## Try to load a ghost opponent grid from a nearby round (±2).
+## Returns null if nothing is saved yet.
+func _try_load_ghost(round_num: int) -> MechGrid:
+	for offset in [0, -1, 1, -2, 2]:
+		var path := "user://ghost_%d.json" % (round_num + offset)
+		if FileAccess.file_exists(path):
+			var file := FileAccess.open(path, FileAccess.READ)
+			if file:
+				var json_str := file.get_as_text()
+				file.close()
+				var data = JSON.parse_string(json_str)
+				if data is Dictionary:
+					return MechGrid.deserialize(data)
+	return null
 
 # ── Public API (called by future UI nodes) ─────────────────────────────────
 

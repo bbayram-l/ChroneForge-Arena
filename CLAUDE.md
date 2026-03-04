@@ -172,14 +172,30 @@ No real-time multiplayer. Enemy grids are serialized snapshots. `MechGrid.serial
 - [x] Star display — upgraded cells show ★ / ★★ beneath the module name in MechGridView
 - [x] Sell refund includes upgrade investment — refund = `cost × star_level / 2`
 
-### Known gaps (deferred Month 6+)
-- Async PvP: upload grid snapshot to server, download opponent, replay viewer
-- Steam demo build, achievements, leaderboard
-- More modules (target 60 for demo; currently 36)
+## What is built (Month 6 — complete)
+
+- [x] 24 new modules — 36 → 60 total (demo target hit)
+  - STRUCTURAL +3: Carbon Weave (COMMON), Blast Plating (UNCOMMON), Armored Chassis (RARE)
+  - POWER +3: Solar Tap (COMMON), Fusion Core (RARE), Overcharge Cell (EPIC)
+  - WEAPON +6: Scatter Burst / Auto Turret (COMMON/UNCOMMON), Twin Blaster (UNCOMMON),
+    Arc Lance / Void Spike (RARE), Siege Cannon 2×2 (EPIC)
+  - DEFENSE +3: Ablative Plating (COMMON), Dampening Shell (RARE), Fortress Shell 2×1 (EPIC)
+  - THERMAL +3: Thermal Wick (COMMON), Phase Cooler (UNCOMMON), Cryo Injector (RARE)
+  - TEMPORAL +3: Stasis Matrix (RARE), Time Dilation (EPIC), Void Resonator (LEGENDARY)
+  - AI +3: Overload Safeguard (UNCOMMON), Repair Drone / Targeting Jammer (RARE)
+- [x] `repair_drone` wired — regen 1 HP/tick (10 HP/sec) capped at starting max
+- [x] `targeting_jammer` wired — adds 0.15 accuracy penalty to all shots fired at the owner
+- [x] Ghost ladder — after each fight the enemy grid is saved to `user://ghost_{round}.json`;
+  next time the same round comes up there is a 30% chance to load it instead of generating
+  a new procedural enemy (async PvP simulation foundation)
+
+### Known gaps (deferred Month 7+)
 - `joint_lock` stat effect not wired
 - Overload flash / visual feedback on module disable
+- Real async PvP server (upload/download grids, leaderboard)
+- Steam demo build, achievements
 
-Month 6 → async PvP server foundation, more modules, Steam demo prep
+Month 7 → visual polish (overload flash, combat log UI), Steam demo prep
 
 ---
 

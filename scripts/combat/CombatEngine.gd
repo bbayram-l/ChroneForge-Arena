@@ -174,6 +174,12 @@ func _tick() -> void:
 	_p_heat.dissipate(d)
 	_e_heat.dissipate(d)
 
+	# repair_drone: regen 1 HP per tick (10 HP/sec), capped at starting max
+	if _has_module(player_grid, "repair_drone"):
+		player_hp = minf(_base_hp(player_grid), player_hp + 1.0)
+	if _has_module(enemy_grid, "repair_drone"):
+		enemy_hp = minf(_base_hp(enemy_grid), enemy_hp + 1.0)
+
 	# overdrive_vent: dump all quadrant heat when any quadrant hits disable threshold (costs 15 HP)
 	if _has_module(player_grid, "overdrive_vent"):
 		for q in range(4):
@@ -300,6 +306,10 @@ func _fire_weapon(weapon: Module, is_player: bool) -> void:
 	var acc_pen := physics.accuracy_penalty()
 	if _has_module(grid, "future_sight"):
 		acc_pen = maxf(0.0, acc_pen - 0.15)
+	# targeting_jammer: +15% accuracy penalty when firing at the defender
+	var opp_grid_j := enemy_grid if is_player else player_grid
+	if _has_module(opp_grid_j, "targeting_jammer"):
+		acc_pen = minf(1.0, acc_pen + 0.15)
 
 	# AI modifiers
 	# targeting_matrix: +10% damage

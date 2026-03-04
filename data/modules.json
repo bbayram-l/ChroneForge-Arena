@@ -448,5 +448,283 @@
 	"grid_w": 1, "grid_h": 1,
 	"weight": 0.5, "structural_load": 0.5,
 	"power_draw": 5.0
+  },
+
+
+  {
+	"id": "carbon_weave",
+	"name": "Carbon Weave",
+	"category": "STRUCTURAL",
+	"rarity": "COMMON",
+	"description": "Ultra-light expansion piece. Minimal mass, minimal protection.",
+	"cost": 2,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 0.3, "structural_load": 0.3,
+	"hp": 6.0
+  },
+  {
+	"id": "armored_chassis",
+	"name": "Armored Chassis",
+	"category": "STRUCTURAL",
+	"rarity": "RARE",
+	"description": "Battle-hardened chassis plate. Massive HP at the cost of significant weight.",
+	"cost": 6,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 4.0, "structural_load": 2.0,
+	"hp": 70.0, "heat_gen": 1.0
+  },
+  {
+	"id": "blast_plating",
+	"name": "Blast Plating",
+	"category": "STRUCTURAL",
+	"rarity": "UNCOMMON",
+	"description": "Thermal-resistant armor. Absorbs impact and bleeds off heat.",
+	"cost": 4,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 2.0, "structural_load": 1.5,
+	"hp": 28.0, "heat_reduction": 4.0
+  },
+
+  {
+	"id": "fusion_core",
+	"name": "Fusion Core",
+	"category": "POWER",
+	"rarity": "RARE",
+	"description": "High-output fusion reactor. Feeds power-hungry weapons at a thermal cost.",
+	"cost": 7,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 3.0, "structural_load": 2.5,
+	"power_gen": 90.0, "heat_gen": 18.0
+  },
+  {
+	"id": "solar_tap",
+	"name": "Solar Tap",
+	"category": "POWER",
+	"rarity": "COMMON",
+	"description": "Passive energy collector. No heat output, but low power yield.",
+	"cost": 2,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 0.4, "structural_load": 0.4,
+	"power_gen": 12.0
+  },
+  {
+	"id": "overcharge_cell",
+	"name": "Overcharge Cell",
+	"category": "POWER",
+	"rarity": "EPIC",
+	"description": "Overclocked power cell. Enormous energy at the cost of temporal stability.",
+	"cost": 9,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 2.0, "structural_load": 2.0,
+	"power_gen": 130.0, "heat_gen": 12.0, "paradox_rate": 12.0
+  },
+
+  {
+	"id": "scatter_burst",
+	"name": "Scatter Burst",
+	"category": "WEAPON",
+	"rarity": "COMMON",
+	"description": "Rapid-fire scattergun. Low per-shot damage, overwhelming volume.",
+	"cost": 3,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 1.0, "structural_load": 1.0,
+	"power_draw": 8.0,
+	"base_damage": 5.0, "fire_rate": 3.5, "recoil_force": 0.15, "heat_gen": 3.0
+  },
+  {
+	"id": "twin_blaster",
+	"name": "Twin Blaster",
+	"category": "WEAPON",
+	"rarity": "UNCOMMON",
+	"description": "Dual-barrel energy blaster. Balanced sustained DPS for any build.",
+	"cost": 4,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 2.0, "structural_load": 2.0,
+	"power_draw": 14.0,
+	"base_damage": 10.0, "fire_rate": 2.0, "recoil_force": 0.4, "heat_gen": 8.0
+  },
+  {
+	"id": "arc_lance",
+	"name": "Arc Lance",
+	"category": "WEAPON",
+	"rarity": "RARE",
+	"description": "Electromagnetic discharge. Zero recoil but generates extreme heat.",
+	"cost": 6,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 1.5, "structural_load": 1.5,
+	"power_draw": 22.0,
+	"base_damage": 30.0, "fire_rate": 0.8, "recoil_force": 0.0, "heat_gen": 20.0
+  },
+  {
+	"id": "siege_cannon",
+	"name": "Siege Cannon",
+	"category": "WEAPON",
+	"rarity": "EPIC",
+	"description": "The heaviest mount. Fires rarely but devastates on impact.",
+	"cost": 9,
+	"grid_w": 2, "grid_h": 2,
+	"weight": 6.0, "structural_load": 5.0,
+	"power_draw": 45.0,
+	"base_damage": 90.0, "fire_rate": 0.2, "recoil_force": 5.0, "heat_gen": 35.0
+  },
+  {
+	"id": "auto_turret",
+	"name": "Auto Turret",
+	"category": "WEAPON",
+	"rarity": "UNCOMMON",
+	"description": "Automated minigun. Constant low-damage harassment with minimal recoil.",
+	"cost": 4,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 1.5, "structural_load": 1.5,
+	"power_draw": 10.0,
+	"base_damage": 4.0, "fire_rate": 4.5, "recoil_force": 0.05, "heat_gen": 4.0
+  },
+  {
+	"id": "void_spike",
+	"name": "Void Spike",
+	"category": "WEAPON",
+	"rarity": "RARE",
+	"description": "Crystallized void projectile. Slow fire rate, punishing single-shot damage.",
+	"cost": 7,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 2.0, "structural_load": 2.0,
+	"power_draw": 30.0,
+	"base_damage": 50.0, "fire_rate": 0.33, "recoil_force": 2.0, "heat_gen": 15.0
+  },
+
+  {
+	"id": "ablative_plating",
+	"name": "Ablative Plating",
+	"category": "DEFENSE",
+	"rarity": "COMMON",
+	"description": "Expendable armor layer. Cheap HP with no secondary effects.",
+	"cost": 2,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 1.5, "structural_load": 1.5,
+	"hp": 22.0
+  },
+  {
+	"id": "dampening_shell",
+	"name": "Dampening Shell",
+	"category": "DEFENSE",
+	"rarity": "RARE",
+	"description": "Layered alloy shell. Blocks energy and dissipates thermal buildup.",
+	"cost": 6,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 1.5, "structural_load": 1.5,
+	"hp": 20.0, "shield_value": 35.0, "power_draw": 10.0, "heat_reduction": 6.0
+  },
+  {
+	"id": "fortress_shell",
+	"name": "Fortress Shell",
+	"category": "DEFENSE",
+	"rarity": "EPIC",
+	"description": "Fortress-grade energy barrier. Enormous shield capacity for siege builds.",
+	"cost": 9,
+	"grid_w": 2, "grid_h": 1,
+	"weight": 3.0, "structural_load": 2.5,
+	"hp": 25.0, "shield_value": 120.0, "power_draw": 18.0
+  },
+
+  {
+	"id": "thermal_wick",
+	"name": "Thermal Wick",
+	"category": "THERMAL",
+	"rarity": "COMMON",
+	"description": "Passive heat conductor. Continuously bleeds heat with no power cost.",
+	"cost": 2,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 0.5, "structural_load": 0.5,
+	"heat_reduction": 5.0
+  },
+  {
+	"id": "phase_cooler",
+	"name": "Phase Cooler",
+	"category": "THERMAL",
+	"rarity": "UNCOMMON",
+	"description": "Phase-change coolant pack. Moderate cooling plus minor structural HP.",
+	"cost": 4,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 1.0, "structural_load": 1.0,
+	"heat_reduction": 16.0, "hp": 8.0, "power_draw": 4.0
+  },
+  {
+	"id": "cryo_injector",
+	"name": "Cryo Injector",
+	"category": "THERMAL",
+	"rarity": "RARE",
+	"description": "High-pressure cryo fluid. Aggressive cooling at significant power cost.",
+	"cost": 6,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 1.2, "structural_load": 1.2,
+	"heat_reduction": 35.0, "power_draw": 14.0
+  },
+
+  {
+	"id": "stasis_matrix",
+	"name": "Stasis Matrix",
+	"category": "TEMPORAL",
+	"rarity": "RARE",
+	"description": "Temporal stasis field. Absorbs incoming damage as Paradox.",
+	"cost": 6,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 0.8, "structural_load": 0.8,
+	"shield_value": 30.0, "power_draw": 14.0, "paradox_rate": 15.0
+  },
+  {
+	"id": "time_dilation",
+	"name": "Time Dilation",
+	"category": "TEMPORAL",
+	"rarity": "EPIC",
+	"description": "Slows local time. Greatly increases durability at the cost of extreme Paradox.",
+	"cost": 9,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 1.0, "structural_load": 1.0,
+	"hp": 30.0, "shield_value": 50.0, "power_draw": 22.0, "paradox_rate": 38.0
+  },
+  {
+	"id": "void_resonator",
+	"name": "Void Resonator",
+	"category": "TEMPORAL",
+	"rarity": "LEGENDARY",
+	"description": "Channels void resonance. Enormous power generation at maximum temporal instability.",
+	"cost": 11,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 2.0, "structural_load": 2.0,
+	"power_gen": 60.0, "heat_gen": 10.0, "hp": 20.0, "power_draw": 15.0, "paradox_rate": 55.0
+  },
+
+  {
+	"id": "overload_safeguard",
+	"name": "Overload Safeguard",
+	"category": "AI",
+	"rarity": "UNCOMMON",
+	"description": "AI-managed thermal safety system. Prevents cascading thermal failures.",
+	"cost": 4,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 0.5, "structural_load": 0.5,
+	"power_draw": 7.0, "heat_reduction": 8.0
+  },
+  {
+	"id": "repair_drone",
+	"name": "Repair Drone",
+	"category": "AI",
+	"rarity": "RARE",
+	"description": "Autonomous repair unit. Regenerates 10 HP per second mid-combat.",
+	"cost": 6,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 0.8, "structural_load": 0.8,
+	"power_draw": 12.0
+  },
+  {
+	"id": "targeting_jammer",
+	"name": "Targeting Jammer",
+	"category": "AI",
+	"rarity": "RARE",
+	"description": "Disrupts enemy targeting. Adds 15% accuracy penalty to all incoming shots.",
+	"cost": 5,
+	"grid_w": 1, "grid_h": 1,
+	"weight": 0.5, "structural_load": 0.5,
+	"power_draw": 8.0
   }
 ]
