@@ -49,6 +49,9 @@ func _try_overload(rng: RandomNumberGenerator, delta: float) -> void:
 		_trigger_overload(rng)
 
 func _trigger_overload(rng: RandomNumberGenerator) -> void:
+	# joint_lock: 50% chance to absorb the overload (consumed each use)
+	if _has_module("joint_lock") and rng.randf() < 0.5:
+		return
 	var candidates := grid.get_all_modules().filter(
 		func(m: Module) -> bool: return not m.disabled
 	)
@@ -58,6 +61,12 @@ func _trigger_overload(rng: RandomNumberGenerator) -> void:
 	var target: Module = candidates[rng.randi() % candidates.size()]
 	target.disabled = true
 	module_disabled.emit(target)
+
+func _has_module(module_id: String) -> bool:
+	for mod in grid.get_all_modules():
+		if mod.id == module_id and not mod.disabled:
+			return true
+	return false
 
 func _temporal_count() -> int:
 	var count := 0
