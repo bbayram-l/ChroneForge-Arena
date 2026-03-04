@@ -1,14 +1,15 @@
 ## Main — root scene script and game-loop coordinator.
 ##
 ## Game loop:
-##   SHOP_PHASE  → player clicks cards to select, clicks grid cells to place
+##   SHOP_PHASE  → player clicks cards to select, clicks grid cells to place/sell
 ##   COMBAT      → deterministic simulation runs instantly, result shown
 ##   ROUND_END   → player clicks "NEXT ROUND" to continue
+##   RUN_OVER    → player clicks "RESTART" to start a new run
 ##
 ## Visual nodes are created programmatically in _setup_ui().
 extends Node
 
-enum Phase { START_RUN, SHOP_PHASE, COMBAT, ROUND_END }
+enum Phase { START_RUN, SHOP_PHASE, COMBAT, ROUND_END, RUN_OVER }
 
 var phase: Phase = Phase.START_RUN
 
@@ -24,7 +25,11 @@ var shop_panel:       ShopPanel
 var hud_panel:        HudPanel
 var _status_label:    Label
 var _action_btn:      Button
+var _reroll_btn:      Button
+var _sell_btn:        Button
+var _run_over_panel:  Control
 var _selected_offer:  Module = null
+var _sell_mode:       bool   = false
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -45,6 +50,7 @@ func _setup_ui() -> void:
 	# Status bar
 	_status_label = Label.new()
 	_status_label.position = Vector2(10.0, 10.0)
+	_status_label.size     = Vector2(900.0, 24.0)
 	_status_label.add_theme_font_size_override("font_size", 15)
 	canvas.add_child(_status_label)
 
@@ -56,9 +62,25 @@ func _setup_ui() -> void:
 	_action_btn.pressed.connect(_on_action_pressed)
 	canvas.add_child(_action_btn)
 
+	# Reroll button — visible only in shop phase
+	_reroll_btn = Button.new()
+	_reroll_btn.position = Vector2(1090.0, 46.0)
+	_reroll_btn.size     = Vector2(172.0, 28.0)
+	_reroll_btn.text     = "REROLL (2g)"
+	_reroll_btn.pressed.connect(_on_reroll_pressed)
+	canvas.add_child(_reroll_btn)
+
+	# Sell button — toggles sell mode in shop phase
+	_sell_btn = Button.new()
+	_sell_btn.position = Vector2(1090.0, 80.0)
+	_sell_btn.size     = Vector2(172.0, 28.0)
+	_sell_btn.text     = "SELL MODULE"
+	_sell_btn.pressed.connect(_on_sell_pressed)
+	canvas.add_child(_sell_btn)
+
 	# Player grid — left side
 	# 6×(64+4)−4 = 404 px wide. Two grids centred: (1280−404−80−404)/2 = 196 px margin
-	# y=50 leaves room for status bar above; HUD fits below at y=510
+	# y=50 leaves room for status bar above; HUD fits below at y=484
 	player_grid_view = MechGridView.new()
 	player_grid_view.position = Vector2(196.0, 50.0)
 	canvas.add_child(player_grid_view)
@@ -73,20 +95,63 @@ func _setup_ui() -> void:
 	enemy_grid_view.set_title("ENEMY")
 	enemy_grid_view.refresh(enemy_grid)
 
-	# HUD — stat bars below the player grid (grid height = 6×68−4 = 404 px, +50 offset = 454 → +30 gap = 484)
+	# HUD — stat bars below the player grid
 	hud_panel = HudPanel.new()
 	hud_panel.position = Vector2(196.0, 484.0)
 	canvas.add_child(hud_panel)
 
 	# Shop panel — below HUD
-	# 5×210 + 4×14 = 1106 px → left margin (1280−1106)/2 = 87 px
-	# HUD bottom ≈ 484+72 = 556; shop at 566
 	shop_panel = ShopPanel.new()
 	shop_panel.position = Vector2(87.0, 566.0)
 	canvas.add_child(shop_panel)
 	shop_panel.module_selected.connect(_on_module_selected)
 
+	# Run-over overlay (hidden until run ends)
+	_run_over_panel = _build_run_over_panel()
+	canvas.add_child(_run_over_panel)
+	_run_over_panel.visible = false
+
 	_update_status()
+
+func _build_run_over_panel() -> Control:
+	var panel := Panel.new()
+	panel.position = Vector2(290.0, 200.0)
+	panel.size     = Vector2(700.0, 340.0)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color     = Color(0.08, 0.08, 0.10, 0.95)
+	style.border_color = Color(0.8, 0.2, 0.2)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(8)
+	panel.add_theme_stylebox_override("panel", style)
+
+	var title := Label.new()
+	title.position = Vector2(0.0, 30.0)
+	title.size     = Vector2(700.0, 60.0)
+	title.text     = "RUN OVER"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 40)
+	title.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2))
+	panel.add_child(title)
+
+	var stats := Label.new()
+	stats.name     = "StatsLabel"
+	stats.position = Vector2(0.0, 120.0)
+	stats.size     = Vector2(700.0, 120.0)
+	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stats.add_theme_font_size_override("font_size", 18)
+	stats.modulate = Color(0.85, 0.85, 0.85)
+	panel.add_child(stats)
+
+	var restart := Button.new()
+	restart.position = Vector2(250.0, 270.0)
+	restart.size     = Vector2(200.0, 44.0)
+	restart.text     = "RESTART"
+	restart.add_theme_font_size_override("font_size", 16)
+	restart.pressed.connect(_on_restart_pressed)
+	panel.add_child(restart)
+
+	return panel
 
 # ── Starter modules ────────────────────────────────────────────────────────
 
@@ -110,6 +175,8 @@ func _give_starter_modules() -> void:
 func _enter_shop_phase() -> void:
 	phase = Phase.SHOP_PHASE
 	_selected_offer = null
+	_sell_mode = false
+	_sell_btn.text = "SELL MODULE"
 	player_grid_view.clear_highlights()
 
 	# Reset any overload-disabled modules from the previous fight
@@ -129,11 +196,17 @@ func _enter_shop_phase() -> void:
 	shop_panel.show_offers(offers)
 	_action_btn.text     = "READY"
 	_action_btn.disabled = false
+	_reroll_btn.text     = "REROLL (%dg)" % GameState.get_reroll_cost()
+	_reroll_btn.disabled = false
+	_sell_btn.disabled   = false
 	_update_status()
 
 func _start_combat() -> void:
 	phase = Phase.COMBAT
 	_action_btn.disabled = true
+	_reroll_btn.disabled = true
+	_sell_btn.disabled   = true
+	_sell_mode = false
 	_selected_offer = null
 	player_grid_view.clear_highlights()
 
@@ -149,32 +222,97 @@ func _start_combat() -> void:
 	_print_combat_summary(result)
 
 func _on_combat_ended(result: Dictionary) -> void:
+	# Pass winner string ("player"/"enemy"/"draw") — draw no longer costs a life
+	GameState.earn_round_income(result.winner)
+
+	var won: bool  = result.winner == "player"
+	var draw: bool = result.winner == "draw"
+	var outcome_text := "WIN" if won else ("DRAW" if draw else "LOSS")
+
+	# Save player grid snapshot after every fight (async PvP foundation)
+	_save_player_grid()
+
+	print("[Round %d] %s — Gold: %d | Lives: %d" % [
+		GameState.current_round - 1,
+		outcome_text,
+		GameState.gold,
+		GameState.player_lives,
+	])
+
+	if GameState.is_run_over():
+		_enter_run_over()
+		return
+
 	phase = Phase.ROUND_END
-	var won: bool = result.winner == "player"
-	GameState.earn_round_income(won)
-	hud_panel.refresh(player_grid)
-	_update_status("Last: %s" % ("WIN" if won else "LOSS"))
+	_update_status("Last: %s" % outcome_text)
 	_action_btn.text     = "NEXT ROUND"
 	_action_btn.disabled = false
-	print("[Round %d] %s — Gold: %d" % [
-		GameState.current_round,
-		"WIN" if won else "LOSS",
-		GameState.gold,
-	])
+
+func _enter_run_over() -> void:
+	phase = Phase.RUN_OVER
+	_action_btn.disabled = true
+	var stats_lbl: Label = _run_over_panel.get_node("StatsLabel")
+	stats_lbl.text = (
+		"Rounds survived: %d\n" +
+		"Wins: %d   Losses: %d\n" +
+		"Final MMR: %d"
+	) % [
+		GameState.current_round - 1,
+		GameState.total_wins,
+		GameState.total_losses,
+		GameState.mmr,
+	]
+	_run_over_panel.visible = true
 
 func _on_action_pressed() -> void:
 	match phase:
 		Phase.SHOP_PHASE: _start_combat()
 		Phase.ROUND_END:  _enter_shop_phase()
 
+func _on_restart_pressed() -> void:
+	_run_over_panel.visible = false
+	# Clear player grid
+	player_grid = MechGrid.new("player")
+	enemy_grid  = MechGrid.new("enemy")
+	player_grid_view.refresh(player_grid)
+	enemy_grid_view.refresh(enemy_grid)
+	# Reset shop with new seed
+	shop = ShopSystem.new(ModuleRegistry.all_modules, randi())
+	GameState.start_run()
+	_give_starter_modules()
+	_enter_shop_phase()
+
 # ── Shop interaction ───────────────────────────────────────────────────────
 
 func _on_module_selected(mod: Module) -> void:
+	_sell_mode = false
+	_sell_btn.text = "SELL MODULE"
 	_selected_offer = mod
 	player_grid_view.highlight_valid(mod, player_grid)
 
 func _on_player_cell_clicked(pos: Vector2i) -> void:
-	if phase != Phase.SHOP_PHASE or _selected_offer == null:
+	if phase != Phase.SHOP_PHASE:
+		return
+
+	# Sell mode: sell the module at this cell for half its cost
+	if _sell_mode:
+		var cell := player_grid.get_cell(pos)
+		if cell == null or cell.is_empty():
+			return
+		var mod: Module = cell.module
+		@warning_ignore("INTEGER_DIVISION")
+		var refund: int = mod.cost / 2
+		player_grid.remove_module_at(pos)
+		GameState.gold += refund
+		GameState.gold_changed.emit(GameState.gold)
+		player_grid_view.refresh(player_grid)
+		hud_panel.refresh(player_grid)
+		_update_status()
+		print("[Sell] Sold: %s for %dg" % [mod.display_name, refund])
+		return
+
+	# Normal placement mode
+	if _selected_offer == null:
 		return
 	if GameState.gold < _selected_offer.cost:
 		print("[Shop] Not enough gold (need %d, have %d)" % [_selected_offer.cost, GameState.gold])
@@ -191,11 +329,32 @@ func _on_player_cell_clicked(pos: Vector2i) -> void:
 		shop_panel.deselect()
 		player_grid_view.clear_highlights()
 
+func _on_reroll_pressed() -> void:
+	if reroll_shop():
+		_reroll_btn.text = "REROLL (%dg)" % GameState.get_reroll_cost()
+
+func _on_sell_pressed() -> void:
+	if phase != Phase.SHOP_PHASE:
+		return
+	_sell_mode = not _sell_mode
+	if _sell_mode:
+		_sell_btn.text = "CANCEL SELL"
+		_selected_offer = null
+		shop_panel.deselect()
+		player_grid_view.clear_highlights()
+	else:
+		_sell_btn.text = "SELL MODULE"
+
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 func _update_status(suffix: String = "") -> void:
-	var text := "Round %d  |  Gold: %d  |  MMR: %d" % [
-		GameState.current_round, GameState.gold, GameState.mmr
+	var lives_str := ""
+	for i in range(GameState.player_lives):
+		lives_str += "♥"
+	for _i in range(maxi(0, 3 - GameState.player_lives)):
+		lives_str += "♡"
+	var text := "Round %d  |  Gold: %d  |  MMR: %d  |  %s" % [
+		GameState.current_round, GameState.gold, GameState.mmr, lives_str
 	]
 	if suffix:
 		text += "  |  " + suffix
@@ -211,6 +370,14 @@ func _print_combat_summary(result: Dictionary) -> void:
 		result.ticks,
 		result.duration_seconds,
 	])
+
+func _save_player_grid() -> void:
+	var data   := player_grid.serialize()
+	var json   := JSON.stringify(data, "\t")
+	var file   := FileAccess.open("user://player_grid.json", FileAccess.WRITE)
+	if file:
+		file.store_string(json)
+		file.close()
 
 # ── Public API (called by future UI nodes) ─────────────────────────────────
 

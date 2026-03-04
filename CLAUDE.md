@@ -148,7 +148,24 @@ No real-time multiplayer. Enemy grids are serialized snapshots. `MechGrid.serial
 - Overload flash / visual feedback on module disable
 - `temporal_barrier` DEFENSE special (paradox_rate accumulates correctly; counter mechanic TBD)
 
-Month 4 → async PvP snapshots, replay viewer, Steam demo build
+## What is built (Month 4 — complete)
+
+- [x] Player lives — 3 lives, lose 1 per loss, draws are neutral (no life lost)
+- [x] Run-over screen — `Phase.RUN_OVER` overlay with rounds/wins/losses/MMR stats + RESTART button
+- [x] REROLL button — wired to existing `reroll_shop()`, cost shown inline, disabled during combat
+- [x] SELL mode — toggle button in shop phase; click a grid cell to sell module for half cost
+- [x] Grid save — `_save_player_grid()` writes `user://player_grid.json` after every fight (async PvP foundation)
+- [x] Draw outcome — `earn_round_income("draw")` advances round, no life cost, no win bonus
+- [x] Status bar lives — ♥♥♥ / ♡ hearts display in HUD status line
+- [x] Timeout balance fix — HP% comparison at MAX_TICKS (10% threshold → draw); enemy wins if ahead
+- [x] Enemy scaling fix — 4-tier slot system: 4–6 modules (T0) → 7–9 (T1) → 10–12 (T2) → 12–14 (T3)
+
+### Known gaps (deferred Month 5+)
+- Module upgrade / star system (gold sink for late game)
+- Async PvP: upload grid snapshot to server, download opponent, replay viewer
+- Steam demo build, achievements, leaderboard
+
+Month 5 → module upgrades, async PvP server, Steam demo
 
 ---
 
