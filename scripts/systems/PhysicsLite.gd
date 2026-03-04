@@ -35,13 +35,14 @@ func torque_imbalance() -> float:
 		return 0.0
 	return clampf((com - ideal).length() / max_dist, 0.0, 1.0)
 
-## StabilityModifier from SYSTEM doc: 1 − (TorqueImbalance × 0.5)
+## StabilityModifier: max(0.1, 1 − (TorqueImbalance × 0.5))
+## Floor at 0.1 prevents negative or zero modifiers on extreme imbalance.
 ## gyro_stabilizer: reduces effective torque imbalance by 30%.
 func stability_modifier() -> float:
 	var ti := torque_imbalance()
 	if _has_module("gyro_stabilizer"):
 		ti *= 0.70
-	return 1.0 - ti * 0.5
+	return maxf(0.1, 1.0 - ti * 0.5)
 
 # ── Recoil ─────────────────────────────────────────────────────────────────
 

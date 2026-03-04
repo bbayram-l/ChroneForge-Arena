@@ -55,12 +55,15 @@ func _thermal_reductions() -> Array[float]:
 
 # ── Queries ────────────────────────────────────────────────────────────────
 
-## 0.0 = no penalty; 1.0 = full penalty (module output zeroed).
+## 0.0 = no penalty; 0.9 = max penalty (efficiency floor 0.1 — mech never fully stops).
+## Uses a quadratic curve so mild overheating barely hurts, but severe overheating
+## collapses DPS sharply. OverheatPenalty = min(0.9, t²) where t = ExcessHeat/Tolerance.
 func overheat_penalty(pos: Vector2i) -> float:
 	var heat := quadrant_heat[quadrant_of(pos)]
 	if heat <= BASE_HEAT_TOLERANCE:
 		return 0.0
-	return (heat - BASE_HEAT_TOLERANCE) / BASE_HEAT_TOLERANCE
+	var t := minf((heat - BASE_HEAT_TOLERANCE) / BASE_HEAT_TOLERANCE, 1.0)
+	return minf(t * t, 0.9)
 
 func is_disabled_by_heat(pos: Vector2i) -> bool:
 	return quadrant_heat[quadrant_of(pos)] >= DISABLE_THRESHOLD

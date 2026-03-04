@@ -5,7 +5,7 @@ class_name ParadoxSystem
 extends RefCounted
 
 const OVERLOAD_THRESHOLD: float  = 100.0
-const OVERLOAD_RATE:      float  = 0.02   # chance per paradox point above 100
+const VOLATILITY_K:       float  = 0.05   # exponential overload curve steepness
 # Meta taxes (from BALANCING doc)
 const TAX_4_TEMPORAL: float = 0.20        # +20% gain rate at ≥4 temporal modules
 const TAX_6_TEMPORAL: float = 0.30        # additional +30% at ≥6
@@ -37,10 +37,14 @@ func tick(delta: float, rng: RandomNumberGenerator, rate_mult: float = 1.0) -> v
 
 	_try_overload(rng, delta)
 
+## Exponential overload curve: OverloadChance/s = 1 − e^(−k × excess)
+## This creates a false sense of safety near threshold, then rapidly ramps:
+##   Paradox 105 → 22%/s  |  115 → 53%/s  |  130 → 78%/s  |  150 → 92%/s
 func _try_overload(rng: RandomNumberGenerator, delta: float) -> void:
 	if paradox <= OVERLOAD_THRESHOLD:
 		return
-	var chance := (paradox - OVERLOAD_THRESHOLD) * OVERLOAD_RATE * delta
+	var excess := paradox - OVERLOAD_THRESHOLD
+	var chance := (1.0 - exp(-VOLATILITY_K * excess)) * delta
 	if rng.randf() < chance:
 		_trigger_overload(rng)
 
@@ -65,7 +69,7 @@ func _temporal_count() -> int:
 func overload_chance_per_second() -> float:
 	if paradox <= OVERLOAD_THRESHOLD:
 		return 0.0
-	return (paradox - OVERLOAD_THRESHOLD) * OVERLOAD_RATE
+	return 1.0 - exp(-VOLATILITY_K * (paradox - OVERLOAD_THRESHOLD))
 
 func normalized() -> float:
 	return paradox / OVERLOAD_THRESHOLD   # 1.0 = at threshold, >1 = danger zone
