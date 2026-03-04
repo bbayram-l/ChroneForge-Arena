@@ -6,6 +6,8 @@ class_name MechGridView
 extends Control
 
 signal cell_clicked(pos: Vector2i)
+signal cell_hovered(pos: Vector2i)
+signal cell_unhovered
 
 const CELL_SIZE: int = 64
 const CELL_GAP:  int = 4
@@ -146,6 +148,8 @@ func _redraw_cell(pos: Vector2i) -> void:
 	var label: Label    = panel.get_child(0)
 
 	var base: Color = EMPTY_COLOR if cell.is_empty() else CATEGORY_COLORS.get(cell.module.category, EMPTY_COLOR)
+	if not cell.is_empty() and cell.module.disabled:
+		base = base.darkened(0.65)
 
 	var final_color := base
 	if _highlighted.has(pos):
@@ -182,12 +186,14 @@ func _on_cell_gui_input(event: InputEvent, pos: Vector2i) -> void:
 		cell_clicked.emit(pos)
 
 func _on_cell_entered(pos: Vector2i) -> void:
+	cell_hovered.emit(pos)
 	if not _highlighted.has(pos):
 		return
 	_hovered_pos = pos
 	_redraw_cell(pos)
 
 func _on_cell_exited(pos: Vector2i) -> void:
+	cell_unhovered.emit()
 	if _hovered_pos != pos:
 		return
 	_hovered_pos = Vector2i(-1, -1)

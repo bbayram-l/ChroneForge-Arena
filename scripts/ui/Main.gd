@@ -29,6 +29,8 @@ var _reroll_btn:      Button
 var _sell_btn:        Button
 var _upgrade_btn:     Button
 var _run_over_panel:  Control
+var _tooltip_panel:   Panel
+var _combat_log:      Label
 var _selected_offer:  Module = null
 var _sell_mode:       bool   = false
 var _upgrade_mode:    bool   = false
@@ -122,7 +124,46 @@ func _setup_ui() -> void:
 	canvas.add_child(_run_over_panel)
 	_run_over_panel.visible = false
 
+	# Module tooltip — right sidebar below upgrade button
+	_tooltip_panel = _build_tooltip_panel()
+	canvas.add_child(_tooltip_panel)
+	_tooltip_panel.visible = false
+	player_grid_view.cell_hovered.connect(_on_player_cell_hovered)
+	player_grid_view.cell_unhovered.connect(_on_player_cell_unhovered)
+
+	# Combat log — below enemy grid
+	_combat_log = Label.new()
+	_combat_log.position      = Vector2(680.0, 464.0)
+	_combat_log.size          = Vector2(404.0, 96.0)
+	_combat_log.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_combat_log.add_theme_font_size_override("font_size", 10)
+	_combat_log.modulate      = Color(0.65, 0.65, 0.65)
+	_combat_log.text          = "— No fights yet —"
+	canvas.add_child(_combat_log)
+
 	_update_status()
+
+func _build_tooltip_panel() -> Panel:
+	var panel := Panel.new()
+	panel.position = Vector2(1090.0, 150.0)
+	panel.size     = Vector2(172.0, 220.0)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.06, 0.10, 0.96)
+	style.set_border_width_all(1)
+	style.border_color = Color(0.35, 0.35, 0.50)
+	style.set_corner_radius_all(4)
+	panel.add_theme_stylebox_override("panel", style)
+
+	var lbl := Label.new()
+	lbl.name          = "TooltipLabel"
+	lbl.position      = Vector2(6.0, 6.0)
+	lbl.size          = Vector2(160.0, 208.0)
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.modulate      = Color(0.9, 0.9, 0.9)
+	panel.add_child(lbl)
+	return panel
 
 func _build_run_over_panel() -> Control:
 	var panel := Panel.new()
@@ -246,6 +287,9 @@ func _start_combat() -> void:
 
 	print("[Combat] Starting round %d simulation…" % GameState.current_round)
 	var result := engine.run_simulation()
+	# Refresh grids so disabled modules show darkened
+	player_grid_view.refresh(player_grid)
+	enemy_grid_view.refresh(enemy_grid)
 	_print_combat_summary(result)
 
 func _on_combat_ended(result: Dictionary) -> void:
@@ -438,6 +482,77 @@ func _print_combat_summary(result: Dictionary) -> void:
 		result.ticks,
 		result.duration_seconds,
 	])
+	_update_combat_log(result.get("event_log", []), result.winner)
+
+func _update_combat_log(log: Array, winner: String) -> void:
+	const HIGHLIGHT := ["dodge", "paradox_overload", "emp_lock", "reflect",
+		"rewind_shield", "capacitor_explosion", "overdrive_vent",
+		"reactive_armor", "heat_disable"]
+	var p_dmg := 0.0
+	var e_dmg := 0.0
+	var p_shots := 0
+	var e_shots  := 0
+	var events: Array[String] = []
+
+	for entry: Dictionary in log:
+		var t: String = entry.get("type", "")
+		var actor: String = entry.get("actor", "?")
+		var tick: int = entry.get("tick", 0)
+		if t == "shot":
+			var d: float = entry.get("damage", 0.0)
+			if actor == "player": p_dmg += d; p_shots += 1
+			else:                 e_dmg += d; e_shots += 1
+		elif t in HIGHLIGHT:
+			match t:
+				"dodge":               events.append("t%d  %s dodged" % [tick, actor])
+				"paradox_overload":    events.append("t%d  %s OVERLOAD [%s]" % [tick, actor, entry.get("module","?")])
+				"emp_lock":            events.append("t%d  %s EMP → %s" % [tick, actor, entry.get("module","?")])
+				"reflect":             events.append("t%d  %s reflected %.0f" % [tick, actor, entry.get("reflected", 0.0)])
+				"rewind_shield":       events.append("t%d  %s REWIND (%.0f shd)" % [tick, actor, entry.get("restored", 0.0)])
+				"capacitor_explosion": events.append("t%d  %s CAPACITOR BLAST" % [tick, actor])
+				"overdrive_vent":      events.append("t%d  %s VENT (−15HP)" % [tick, actor])
+				"reactive_armor":      events.append("t%d  %s reactive armor" % [tick, actor])
+				"heat_disable":        events.append("t%d  %s heat-disabled [%s]" % [tick, actor, entry.get("module","?")])
+
+	var outcome := winner.to_upper()
+	var header := "%s  |  P %.0fdmg (%d)  E %.0fdmg (%d)" % [outcome, p_dmg, p_shots, e_dmg, e_shots]
+	var tail := events.slice(-7)   # last 7 notable events
+	tail.insert(0, header)
+	_combat_log.text = "\n".join(tail)
+
+func _on_player_cell_hovered(pos: Vector2i) -> void:
+	var cell := player_grid.get_cell(pos)
+	if cell == null or cell.is_empty():
+		_tooltip_panel.visible = false
+		return
+	var mod := cell.module
+	var lbl: Label = _tooltip_panel.get_node("TooltipLabel")
+	var lines: Array[String] = []
+	var stars := "★".repeat(mod.star_level - 1)
+	lines.append(mod.display_name + ("  " + stars if stars else ""))
+	lines.append("%s · %s" % [Module.Category.keys()[mod.category], Module.Rarity.keys()[mod.rarity]])
+	lines.append("")
+	if mod.base_damage  > 0.0: lines.append("DMG  %.0f  RoF %.1f/s" % [mod.base_damage, mod.fire_rate])
+	if mod.power_gen    > 0.0: lines.append("GEN  +%.0f" % mod.power_gen)
+	if mod.power_draw   > 0.0: lines.append("PWR  −%.0f" % mod.power_draw)
+	if mod.hp           > 0.0: lines.append("HP   +%.0f" % mod.hp)
+	if mod.shield_value > 0.0: lines.append("SHD  +%.0f" % mod.shield_value)
+	if mod.heat_reduction > 0.0: lines.append("COOL +%.0f" % mod.heat_reduction)
+	if mod.heat_gen     > 0.0: lines.append("HEAT +%.0f/s" % mod.heat_gen)
+	if mod.paradox_rate > 0.0: lines.append("PDX  +%.0f/s" % mod.paradox_rate)
+	if mod.recoil_force > 0.0: lines.append("RCOL %.1f" % mod.recoil_force)
+	lines.append("")
+	if mod.disabled:
+		lines.append("[ DISABLED ]")
+	elif mod.star_level < Module.MAX_STARS:
+		lines.append("Upgrade: %dg → ★%d" % [mod.upgrade_cost(), mod.star_level + 1])
+	else:
+		lines.append("★ MAX STAR ★")
+	lbl.text = "\n".join(lines)
+	_tooltip_panel.visible = true
+
+func _on_player_cell_unhovered() -> void:
+	_tooltip_panel.visible = false
 
 func _save_player_grid() -> void:
 	var data   := player_grid.serialize()
