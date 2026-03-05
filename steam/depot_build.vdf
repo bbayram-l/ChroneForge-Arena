@@ -1,0 +1,19 @@
+"DepotBuild"
+{
+    // ── Replace STEAM_DEPOT_ID with your real Depot ID ────────────────────────
+    "DepotID"       "STEAM_DEPOT_ID"
+
+    // ContentRoot is set in app_build.vdf; paths below are relative to it
+    "FileMapping"
+    {
+        "LocalPath"     "*"
+        "DepotPath"     "."
+        "Recursive"     "1"
+    }
+
+    // Exclude files that should never ship to players
+    "FileExclusion" "*.pdb"
+    "FileExclusion" "*.exp"
+    "FileExclusion" "*.lib"
+    "FileExclusion" "*.import"
+}

@@ -1,0 +1,53 @@
+# git-cliff configuration for ChronoForge Arena
+# Generates CHANGELOG.md from conventional commit messages.
+#
+# Install:  cargo install git-cliff   OR download from https://github.com/orhun/git-cliff
+# Usage:    git cliff --output CHANGELOG.md          (full history)
+#           git cliff --tag v1.0.0 --output CHANGELOG.md  (pin version)
+#           git cliff --latest                        (latest section only)
+
+[changelog]
+header = "# ChronoForge Arena — Changelog\n\n---\n"
+
+body = """
+## [{{ version | trim_start_matches(pat="v") }}]{% if timestamp %} — {{ timestamp | date(format="%Y-%m-%d") }}{% endif %}
+
+{% for group, commits in commits | group_by(attribute="group") %}\
+### {{ group }}
+{% for commit in commits %}\
+- {% if commit.breaking %}**[BREAKING]** {% endif %}{{ commit.message | upper_first }}
+{% endfor %}
+{% endfor %}\
+"""
+
+trim = true
+footer = "\n---\n"
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+split_commits = false
+
+# Map commit prefixes to changelog sections.
+# Commits matching no rule are grouped under "Other Changes".
+commit_parsers = [
+    { message = "^feat",    group = "New Features"    },
+    { message = "^fix",     group = "Bug Fixes"       },
+    { message = "^balance", group = "Balance Changes" },
+    { message = "^perf",    group = "Performance"     },
+    { message = "^refactor",group = "Refactoring"     },
+    { message = "^Month",   group = "Features"        },
+    { message = "^Balance", group = "Balance Changes" },
+    # Skip housekeeping commits
+    { message = "^docs",    skip = true },
+    { message = "^chore",   skip = true },
+    { message = "^ci",      skip = true },
+]
+
+protect_breaking_commits = false
+filter_commits = false
+tag_pattern = "v[0-9]*"
+skip_tags = ""
+ignore_tags = ""
+topo_order = false
+sort_commits = "oldest"

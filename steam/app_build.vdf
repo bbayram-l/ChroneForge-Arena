@@ -1,0 +1,23 @@
+"AppBuild"
+{
+    // ── Replace STEAM_APP_ID with your real App ID from Steamworks ────────────
+    "AppID"         "STEAM_APP_ID"
+
+    // Updated automatically by release.sh
+    "Desc"          "ChronoForge Arena vX.X.X Demo"
+
+    // Output directory for SteamPipe logs and manifests
+    "BuildOutput"   "../build_output/"
+
+    // Where the exported game files live (from Godot export)
+    "ContentRoot"   "../build/"
+
+    // Branch to push to. Use "beta" during development; "" = default branch
+    "SetLive"       "beta"
+
+    "Depots"
+    {
+        // ── Replace STEAM_DEPOT_ID with your real Depot ID ────────────────────
+        "STEAM_DEPOT_ID"    "depot_build.vdf"
+    }
+}
