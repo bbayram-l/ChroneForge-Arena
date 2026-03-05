@@ -941,6 +941,7 @@ func _on_archetype_selected(archetype: String) -> void:
 	shop = ShopSystem.new(ModuleRegistry.all_modules, randi())
 
 	GameState.start_run()
+	Logger.log_run_start(archetype)
 	_give_starter_modules()
 	_enter_shop_phase()
 
@@ -1050,6 +1051,7 @@ func _start_combat() -> void:
 	engine.combat_ended.connect(_on_combat_ended)
 
 	print("[Combat] Starting round %d simulation…" % GameState.current_round)
+	Logger.log_round_start(GameState.current_round, GameState.gold, player_grid, enemy_grid)
 	var result := engine.run_simulation()
 	# Refresh grids so disabled modules show darkened
 	player_grid_view.refresh(player_grid)
@@ -1059,6 +1061,7 @@ func _start_combat() -> void:
 func _on_combat_ended(result: Dictionary) -> void:
 	# Pass winner string ("player"/"enemy"/"draw") — draw no longer costs a life
 	GameState.earn_round_income(result.winner)
+	Logger.log_combat_result(GameState.current_round - 1, GameState.gold, result)
 
 	var won: bool  = result.winner == "player"
 	var draw: bool = result.winner == "draw"
@@ -1085,6 +1088,7 @@ func _on_combat_ended(result: Dictionary) -> void:
 
 func _enter_run_over() -> void:
 	phase = Phase.RUN_OVER
+	Logger.log_run_end(GameState.current_round - 1, GameState.total_wins, GameState.total_losses, GameState.mmr)
 	_results_panel.visible = false
 	_action_btn.disabled = true
 	var stats_lbl: Label = _run_over_panel.get_node("StatsLabel")
