@@ -200,7 +200,8 @@ static func _populate(grid: MechGrid, archetype: int, round_num: int, max_rarity
 	_apply_star_upgrades(grid, tier)
 
 ## Upgrade enemy modules based on tier so they scale with the player's build progression.
-## Tier 1: weapon ★2. Tier 2: weapon ★3, power ★2. Tier 3: all modules ★3.
+## Tier 1: weapon ★2.  Tier 2: weapon ★2, power ★2.  Tier 3: weapon ★3, power ★2.
+## ★3 weapons are capped to tier 3 (round 12+) so mid-game enemies aren't walls.
 static func _apply_star_upgrades(grid: MechGrid, tier: int) -> void:
 	if tier == 0:
 		return
@@ -210,10 +211,10 @@ static func _apply_star_upgrades(grid: MechGrid, tier: int) -> void:
 			1:
 				upgrades = 1 if mod.category == Module.Category.WEAPON else 0
 			2:
-				if   mod.category == Module.Category.WEAPON: upgrades = 2
-				elif mod.category == Module.Category.POWER:  upgrades = 1
+				upgrades = 1   # weapon ★2, power ★2, others ★2
 			3:
-				upgrades = 2   # all modules reach ★3
+				if   mod.category == Module.Category.WEAPON: upgrades = 2   # ★3
+				else:                                        upgrades = 1   # ★2
 		for _i in range(upgrades):
 			mod.upgrade()
 

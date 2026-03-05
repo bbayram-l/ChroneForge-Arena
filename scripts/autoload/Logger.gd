@@ -115,6 +115,7 @@ func _write(obj: Dictionary) -> void:
 	if _file == null:
 		return
 	_file.store_line(JSON.stringify(obj))
+	_file.flush()
 
 func _grid_snapshot(grid: MechGrid) -> Array:
 	var out: Array = []

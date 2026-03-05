@@ -18,7 +18,7 @@ var total_wins: int = 0
 var total_losses: int = 0
 var archetype: String = "RECOIL_BERSERKER"
 
-const BASE_INCOME: int = 5
+const BASE_INCOME: int = 6
 const MAX_INTEREST: int = 5
 const WIN_BONUS: int = 2
 

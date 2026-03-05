@@ -134,9 +134,10 @@ func run_simulation() -> Dictionary:
 	_p_crack          = 0
 	_e_crack          = 0
 
-	# Temporal pre-load: each temporal module contributes 5 starting paradox.
-	# At 4 modules → 20/100; at 6 → 30/100. This means the meta tax bites from
-	# tick 1 and short fights don't let temporal builds dodge their own downside.
+	# Temporal pre-load: each temporal module contributes 8 starting paradox.
+	# At 2 modules → 16/100; at 4 → 32/100; at 6 → 48/100.
+	# Higher pre-load ensures temporal builds feel their own downside even in
+	# short fights (they accumulate faster from an already-elevated base).
 	var _p_t_count := 0
 	var _e_t_count := 0
 	for mod in player_grid.get_all_modules():
@@ -145,22 +146,33 @@ func run_simulation() -> Dictionary:
 	for mod in enemy_grid.get_all_modules():
 		if mod.category == Module.Category.TEMPORAL:
 			_e_t_count += 1
-	_p_paradox.paradox = float(_p_t_count) * 5.0
-	_e_paradox.paradox = float(_e_t_count) * 5.0
+	_p_paradox.paradox = float(_p_t_count) * 8.0
+	_e_paradox.paradox = float(_e_t_count) * 8.0
 
-	# pre_fire_snapshot: all weapons fire once before the main loop.
-	# Runs BEFORE timeline_split is activated so the opening volley does not
-	# benefit from the 2× damage window — they are distinct mechanics.
-	# 0.8× snapshot penalty: pre-fire shots are unguided/untargeted.
+	# pre_fire_snapshot: each copy fires exactly ONE weapon before the main loop.
+	# Hard cap: 1 snapshot = 1 weapon fires (not all). Stacking gives 2 pre-fires,
+	# not 2× all-weapon volleys.  0.8× penalty still applies (unguided/untargeted).
+	var _p_snap_count := 0
+	var _e_snap_count := 0
+	for mod in player_grid.get_all_modules():
+		if mod.id == "pre_fire_snapshot": _p_snap_count += 1
+	for mod in enemy_grid.get_all_modules():
+		if mod.id == "pre_fire_snapshot": _e_snap_count += 1
 	_pre_fire_active = true
-	if _has_module(player_grid, "pre_fire_snapshot"):
+	if _p_snap_count > 0:
+		var _p_fired := 0
 		for mod in player_grid.get_all_modules():
+			if _p_fired >= _p_snap_count: break
 			if mod.category == Module.Category.WEAPON and not mod.disabled:
 				_fire_weapon(mod, true)
-	if _has_module(enemy_grid, "pre_fire_snapshot"):
+				_p_fired += 1
+	if _e_snap_count > 0:
+		var _e_fired := 0
 		for mod in enemy_grid.get_all_modules():
+			if _e_fired >= _e_snap_count: break
 			if mod.category == Module.Category.WEAPON and not mod.disabled:
 				_fire_weapon(mod, false)
+				_e_fired += 1
 	_pre_fire_active = false
 
 	# timeline_split: active for first 1.5 seconds of combat (starts after pre-fire)
@@ -522,8 +534,10 @@ func _deal_to_player(raw: float, _source: Module) -> void:
 	player_shield = maxf(0.0, player_shield - res.shield_damage)
 	player_hp     = maxf(0.0, player_hp     - res.hp_damage)
 
-	# reflective_field: reflect 20% of raw incoming damage back at the attacker
-	if _has_module(player_grid, "reflective_field") and raw > 0.0:
+	# reflective_field: reflect 20% of raw incoming damage back at the attacker.
+	# Minimum 8 damage threshold — scatter pellets and tiny hits don't reflect
+	# (prevents log spam and trivial chip from scatter_burst).
+	if _has_module(player_grid, "reflective_field") and raw >= 8.0:
 		var reflected := raw * 0.20
 		enemy_hp = maxf(0.0, enemy_hp - reflected)
 		_log("reflect", true, {"reflected": snappedf(reflected, 0.01)})
@@ -555,8 +569,9 @@ func _deal_to_enemy(raw: float, _source: Module) -> void:
 	enemy_shield = maxf(0.0, enemy_shield - res.shield_damage)
 	enemy_hp     = maxf(0.0, enemy_hp     - res.hp_damage)
 
-	# reflective_field: reflect 20% of raw incoming damage back at the attacker
-	if _has_module(enemy_grid, "reflective_field") and raw > 0.0:
+	# reflective_field: reflect 20% of raw incoming damage back at the attacker.
+	# Minimum 8 damage threshold — scatter pellets and tiny hits don't reflect.
+	if _has_module(enemy_grid, "reflective_field") and raw >= 8.0:
 		var reflected := raw * 0.20
 		player_hp = maxf(0.0, player_hp - reflected)
 		_log("reflect", false, {"reflected": snappedf(reflected, 0.01)})
