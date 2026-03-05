@@ -157,11 +157,12 @@ func _build_changelog_overlay(canvas: CanvasLayer) -> void:
 	panel.add_child(scroll)
 
 	var rtl := RichTextLabel.new()
-	rtl.bbcode_enabled = true
-	rtl.fit_content    = true
-	rtl.size           = Vector2(860.0, 0.0)   # height expands with content
+	rtl.bbcode_enabled       = true
+	rtl.fit_content          = true   # height grows to fit text
+	rtl.custom_minimum_size  = Vector2(860.0, 0.0)   # fixes width inside ScrollContainer
 	rtl.add_theme_font_size_override("normal_font_size", 12)
 	rtl.add_theme_font_size_override("bold_font_size",   13)
+	rtl.add_theme_color_override("default_color", Color(0.82, 0.82, 0.86))
 	rtl.text = _changelog_text()
 	scroll.add_child(rtl)
 
