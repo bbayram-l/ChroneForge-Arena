@@ -16,6 +16,7 @@ var mmr: int = 1000
 var player_lives: int = 3
 var total_wins: int = 0
 var total_losses: int = 0
+var archetype: String = "RECOIL_BERSERKER"
 
 const BASE_INCOME: int = 5
 const MAX_INTEREST: int = 5
@@ -30,6 +31,7 @@ func start_run() -> void:
 	player_lives = 3
 	total_wins = 0
 	total_losses = 0
+	# archetype is set before start_run() via the selection screen
 
 ## outcome: "player" = win, "enemy" = loss, "draw" = neither.
 ## Draws advance the round but cost no life and grant no win bonus.

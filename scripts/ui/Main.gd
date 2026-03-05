@@ -28,13 +28,24 @@ var _action_btn:      Button
 var _reroll_btn:      Button
 var _sell_btn:        Button
 var _upgrade_btn:     Button
-var _run_over_panel:  Control
-var _tooltip_panel:   Panel
+var _run_over_panel:   Control
+var _results_panel:    Panel
+var _archetype_panel:  Panel
+var _replay_panel:     Panel
+var _tooltip_panel:    Panel
 var _combat_log:      Label
 var _selected_offer:  Module = null
 var _sell_mode:       bool   = false
 var _upgrade_mode:    bool   = false
 var _protected_cells: Array[Vector2i] = []
+
+# ── Replay state ────────────────────────────────────────────────────────────
+var _last_result:           Dictionary = {}
+var _replay_timer:          Timer
+var _replay_tick:           int        = 0
+var _replay_speed_fast:     bool       = false
+var _replay_states:         Dictionary = {}   # tick(int) → state dict
+var _replay_events_by_tick: Dictionary = {}   # tick(int) → Array[Dictionary]
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -44,9 +55,7 @@ func _ready() -> void:
 	shop        = ShopSystem.new(ModuleRegistry.all_modules, randi())
 
 	_setup_ui()
-	GameState.start_run()
-	_give_starter_modules()
-	_enter_shop_phase()
+	_archetype_panel.visible = true
 
 func _setup_ui() -> void:
 	var canvas := CanvasLayer.new()
@@ -110,12 +119,12 @@ func _setup_ui() -> void:
 
 	# HUD — stat bars below the player grid
 	hud_panel = HudPanel.new()
-	hud_panel.position = Vector2(196.0, 484.0)
+	hud_panel.position = Vector2(196.0, 464.0)
 	canvas.add_child(hud_panel)
 
 	# Shop panel — below HUD
 	shop_panel = ShopPanel.new()
-	shop_panel.position = Vector2(87.0, 566.0)
+	shop_panel.position = Vector2(22.0, 640.0)
 	canvas.add_child(shop_panel)
 	shop_panel.module_selected.connect(_on_module_selected)
 
@@ -124,6 +133,28 @@ func _setup_ui() -> void:
 	canvas.add_child(_run_over_panel)
 	_run_over_panel.visible = false
 
+	# Post-battle results overlay (hidden until combat ends)
+	_results_panel = _build_results_panel()
+	canvas.add_child(_results_panel)
+	_results_panel.visible = false
+
+	# Archetype selection overlay (shown at run start)
+	_archetype_panel = _build_archetype_panel()
+	canvas.add_child(_archetype_panel)
+	_archetype_panel.visible = false
+
+	# Replay overlay (hidden until player clicks REPLAY)
+	_replay_panel = _build_replay_panel()
+	canvas.add_child(_replay_panel)
+	_replay_panel.visible = false
+
+	# Replay timer — drives tick-by-tick playback
+	_replay_timer = Timer.new()
+	_replay_timer.one_shot = false
+	_replay_timer.wait_time = CombatEngine.TICK_RATE
+	_replay_timer.timeout.connect(_on_replay_tick)
+	add_child(_replay_timer)
+
 	# Module tooltip — right sidebar below upgrade button
 	_tooltip_panel = _build_tooltip_panel()
 	canvas.add_child(_tooltip_panel)
@@ -131,15 +162,9 @@ func _setup_ui() -> void:
 	player_grid_view.cell_hovered.connect(_on_player_cell_hovered)
 	player_grid_view.cell_unhovered.connect(_on_player_cell_unhovered)
 
-	# Combat log — below enemy grid
-	_combat_log = Label.new()
-	_combat_log.position      = Vector2(680.0, 464.0)
-	_combat_log.size          = Vector2(404.0, 96.0)
-	_combat_log.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_combat_log.add_theme_font_size_override("font_size", 10)
-	_combat_log.modulate      = Color(0.65, 0.65, 0.65)
-	_combat_log.text          = "— No fights yet —"
-	canvas.add_child(_combat_log)
+	# Combat log — right sidebar panel
+	var log_panel := _build_combat_log_panel()
+	canvas.add_child(log_panel)
 
 	_update_status()
 
@@ -164,6 +189,506 @@ func _build_tooltip_panel() -> Panel:
 	lbl.modulate      = Color(0.9, 0.9, 0.9)
 	panel.add_child(lbl)
 	return panel
+
+func _build_results_panel() -> Panel:
+	var panel := Panel.new()
+	panel.position = Vector2(240.0, 185.0)
+	panel.size     = Vector2(800.0, 410.0)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color     = Color(0.07, 0.07, 0.10, 0.97)
+	style.border_color = Color(0.35, 0.35, 0.55)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(6)
+	panel.add_theme_stylebox_override("panel", style)
+
+	# Outcome header
+	var header := Label.new()
+	header.name                    = "Header"
+	header.position                = Vector2(0.0, 12.0)
+	header.size                    = Vector2(800.0, 40.0)
+	header.horizontal_alignment    = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 28)
+	panel.add_child(header)
+
+	# Round + duration line
+	var subheader := Label.new()
+	subheader.name               = "Subheader"
+	subheader.position           = Vector2(0.0, 52.0)
+	subheader.size               = Vector2(800.0, 18.0)
+	subheader.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subheader.add_theme_font_size_override("font_size", 11)
+	subheader.modulate           = Color(0.6, 0.6, 0.65)
+	panel.add_child(subheader)
+
+	# Player stats (left column)
+	var p_lbl := Label.new()
+	p_lbl.name     = "PlayerStats"
+	p_lbl.position = Vector2(28.0, 78.0)
+	p_lbl.size     = Vector2(350.0, 110.0)
+	p_lbl.add_theme_font_size_override("font_size", 11)
+	panel.add_child(p_lbl)
+
+	# Centre divider
+	var div := ColorRect.new()
+	div.position = Vector2(400.0, 78.0)
+	div.size     = Vector2(1.0, 110.0)
+	div.color    = Color(0.28, 0.28, 0.40)
+	panel.add_child(div)
+
+	# Enemy stats (right column)
+	var e_lbl := Label.new()
+	e_lbl.name     = "EnemyStats"
+	e_lbl.position = Vector2(420.0, 78.0)
+	e_lbl.size     = Vector2(350.0, 110.0)
+	e_lbl.add_theme_font_size_override("font_size", 11)
+	panel.add_child(e_lbl)
+
+	# Separator
+	var sep_lbl := Label.new()
+	sep_lbl.name               = "EventsSep"
+	sep_lbl.position           = Vector2(0.0, 196.0)
+	sep_lbl.size               = Vector2(800.0, 16.0)
+	sep_lbl.text               = "── NOTABLE EVENTS ──"
+	sep_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sep_lbl.add_theme_font_size_override("font_size", 9)
+	sep_lbl.modulate           = Color(0.42, 0.42, 0.52)
+	panel.add_child(sep_lbl)
+
+	# Events list
+	var ev_lbl := Label.new()
+	ev_lbl.name          = "Events"
+	ev_lbl.position      = Vector2(28.0, 216.0)
+	ev_lbl.size          = Vector2(744.0, 158.0)
+	ev_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ev_lbl.add_theme_font_size_override("font_size", 10)
+	ev_lbl.modulate      = Color(0.72, 0.72, 0.72)
+	panel.add_child(ev_lbl)
+
+	# REPLAY button — bottom center
+	var replay_btn := Button.new()
+	replay_btn.name     = "ReplayBtn"
+	replay_btn.position = Vector2(290.0, 370.0)
+	replay_btn.size     = Vector2(220.0, 28.0)
+	replay_btn.text     = "▶  REPLAY FIGHT"
+	replay_btn.add_theme_font_size_override("font_size", 12)
+	replay_btn.pressed.connect(_start_replay)
+	panel.add_child(replay_btn)
+
+	return panel
+
+func _build_combat_log_panel() -> Panel:
+	var panel := Panel.new()
+	panel.position = Vector2(1090.0, 375.0)
+	panel.size     = Vector2(172.0, 240.0)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.05, 0.05, 0.08, 0.96)
+	style.set_border_width_all(1)
+	style.border_color = Color(0.30, 0.30, 0.45)
+	style.set_corner_radius_all(4)
+	panel.add_theme_stylebox_override("panel", style)
+
+	var header := Label.new()
+	header.position = Vector2(6.0, 4.0)
+	header.size     = Vector2(160.0, 16.0)
+	header.text     = "COMBAT LOG"
+	header.add_theme_font_size_override("font_size", 10)
+	header.add_theme_color_override("font_color", Color(0.6, 0.6, 0.75))
+	panel.add_child(header)
+
+	_combat_log = Label.new()
+	_combat_log.position      = Vector2(6.0, 22.0)
+	_combat_log.size          = Vector2(160.0, 214.0)
+	_combat_log.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_combat_log.add_theme_font_size_override("font_size", 9)
+	_combat_log.modulate      = Color(0.75, 0.75, 0.75)
+	_combat_log.text          = "— No fights yet —"
+	panel.add_child(_combat_log)
+	return panel
+
+# ── Replay panel ─────────────────────────────────────────────────────────────
+# Layout: 960×330 centered. Two HP+shield bars (left=player, right=enemy),
+# a centre tick/time label, live keyword badges, and a scrolling event feed.
+
+func _build_replay_panel() -> Panel:
+	const PW: float = 960.0
+	const PH: float = 330.0
+	var panel := Panel.new()
+	panel.position = Vector2((1280.0 - PW) * 0.5, 210.0)
+	panel.size     = Vector2(PW, PH)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color     = Color(0.05, 0.05, 0.09, 0.97)
+	style.border_color = Color(0.30, 0.45, 0.70)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(6)
+	panel.add_theme_stylebox_override("panel", style)
+
+	# Title / tick counter (top centre)
+	var title := Label.new()
+	title.name               = "ReplayTitle"
+	title.position           = Vector2(0.0, 8.0)
+	title.size               = Vector2(PW, 22.0)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 14)
+	title.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0))
+	panel.add_child(title)
+
+	# ── Player side (left) ──────────────────────────────────────────────────
+	const BAR_W: float = 400.0
+	const BAR_H: float = 18.0
+	const SHD_H: float = 8.0
+
+	var p_name := Label.new()
+	p_name.position = Vector2(20.0, 36.0)
+	p_name.size     = Vector2(BAR_W, 18.0)
+	p_name.text     = "PLAYER"
+	p_name.add_theme_font_size_override("font_size", 11)
+	p_name.add_theme_color_override("font_color", Color(0.5, 1.0, 0.5))
+	panel.add_child(p_name)
+
+	# HP track + fill
+	var p_hp_track := ColorRect.new()
+	p_hp_track.position = Vector2(20.0, 56.0)
+	p_hp_track.size     = Vector2(BAR_W, BAR_H)
+	p_hp_track.color    = Color(0.12, 0.12, 0.12)
+	panel.add_child(p_hp_track)
+	var p_hp_fill := ColorRect.new()
+	p_hp_fill.name     = "PlayerHPFill"
+	p_hp_fill.position = Vector2(20.0, 56.0)
+	p_hp_fill.size     = Vector2(BAR_W, BAR_H)
+	p_hp_fill.color    = Color(0.2, 0.75, 0.2)
+	panel.add_child(p_hp_fill)
+	var p_hp_lbl := Label.new()
+	p_hp_lbl.name     = "PlayerHPVal"
+	p_hp_lbl.position = Vector2(20.0, 56.0)
+	p_hp_lbl.size     = Vector2(BAR_W, BAR_H)
+	p_hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	p_hp_lbl.add_theme_font_size_override("font_size", 10)
+	panel.add_child(p_hp_lbl)
+
+	# Shield track + fill
+	var p_sh_track := ColorRect.new()
+	p_sh_track.position = Vector2(20.0, 76.0)
+	p_sh_track.size     = Vector2(BAR_W, SHD_H)
+	p_sh_track.color    = Color(0.08, 0.08, 0.18)
+	panel.add_child(p_sh_track)
+	var p_sh_fill := ColorRect.new()
+	p_sh_fill.name     = "PlayerShieldFill"
+	p_sh_fill.position = Vector2(20.0, 76.0)
+	p_sh_fill.size     = Vector2(BAR_W, SHD_H)
+	p_sh_fill.color    = Color(0.3, 0.5, 1.0)
+	panel.add_child(p_sh_fill)
+
+	# Keywords
+	var p_kw := Label.new()
+	p_kw.name     = "PlayerKeywords"
+	p_kw.position = Vector2(20.0, 88.0)
+	p_kw.size     = Vector2(BAR_W, 18.0)
+	p_kw.add_theme_font_size_override("font_size", 10)
+	panel.add_child(p_kw)
+
+	# ── Enemy side (right) ──────────────────────────────────────────────────
+	var e_x: float = PW - BAR_W - 20.0
+
+	var e_name := Label.new()
+	e_name.position = Vector2(e_x, 36.0)
+	e_name.size     = Vector2(BAR_W, 18.0)
+	e_name.text     = "ENEMY"
+	e_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	e_name.add_theme_font_size_override("font_size", 11)
+	e_name.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+	panel.add_child(e_name)
+
+	var e_hp_track := ColorRect.new()
+	e_hp_track.position = Vector2(e_x, 56.0)
+	e_hp_track.size     = Vector2(BAR_W, BAR_H)
+	e_hp_track.color    = Color(0.12, 0.12, 0.12)
+	panel.add_child(e_hp_track)
+	var e_hp_fill := ColorRect.new()
+	e_hp_fill.name     = "EnemyHPFill"
+	e_hp_fill.position = Vector2(e_x, 56.0)
+	e_hp_fill.size     = Vector2(BAR_W, BAR_H)
+	e_hp_fill.color    = Color(0.8, 0.2, 0.2)
+	panel.add_child(e_hp_fill)
+	var e_hp_lbl := Label.new()
+	e_hp_lbl.name     = "EnemyHPVal"
+	e_hp_lbl.position = Vector2(e_x, 56.0)
+	e_hp_lbl.size     = Vector2(BAR_W, BAR_H)
+	e_hp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	e_hp_lbl.add_theme_font_size_override("font_size", 10)
+	panel.add_child(e_hp_lbl)
+
+	var e_sh_track := ColorRect.new()
+	e_sh_track.position = Vector2(e_x, 76.0)
+	e_sh_track.size     = Vector2(BAR_W, SHD_H)
+	e_sh_track.color    = Color(0.08, 0.08, 0.18)
+	panel.add_child(e_sh_track)
+	var e_sh_fill := ColorRect.new()
+	e_sh_fill.name     = "EnemyShieldFill"
+	e_sh_fill.position = Vector2(e_x, 76.0)
+	e_sh_fill.size     = Vector2(BAR_W, SHD_H)
+	e_sh_fill.color    = Color(0.3, 0.5, 1.0)
+	panel.add_child(e_sh_fill)
+
+	var e_kw := Label.new()
+	e_kw.name     = "EnemyKeywords"
+	e_kw.position = Vector2(e_x, 88.0)
+	e_kw.size     = Vector2(BAR_W, 18.0)
+	e_kw.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	e_kw.add_theme_font_size_override("font_size", 10)
+	panel.add_child(e_kw)
+
+	# ── Divider + centre stats ───────────────────────────────────────────────
+	var cdiv := ColorRect.new()
+	cdiv.position = Vector2(PW * 0.5 - 1.0, 36.0)
+	cdiv.size     = Vector2(2.0, 70.0)
+	cdiv.color    = Color(0.25, 0.25, 0.40)
+	panel.add_child(cdiv)
+
+	# ── Paradox meters ────────────────────────────────────────────────────────
+	var pdx_sep := Label.new()
+	pdx_sep.position             = Vector2(0.0, 110.0)
+	pdx_sep.size                 = Vector2(PW, 14.0)
+	pdx_sep.text                 = "── PARADOX ──"
+	pdx_sep.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pdx_sep.add_theme_font_size_override("font_size", 8)
+	pdx_sep.modulate             = Color(0.5, 0.4, 0.7)
+	panel.add_child(pdx_sep)
+
+	var p_pdx_track := ColorRect.new()
+	p_pdx_track.position = Vector2(20.0, 126.0)
+	p_pdx_track.size     = Vector2(BAR_W, 6.0)
+	p_pdx_track.color    = Color(0.10, 0.08, 0.14)
+	panel.add_child(p_pdx_track)
+	var p_pdx_fill := ColorRect.new()
+	p_pdx_fill.name     = "PlayerPDXFill"
+	p_pdx_fill.position = Vector2(20.0, 126.0)
+	p_pdx_fill.size     = Vector2(BAR_W, 6.0)
+	p_pdx_fill.color    = Color(0.65, 0.3, 1.0)
+	panel.add_child(p_pdx_fill)
+
+	var e_pdx_track := ColorRect.new()
+	e_pdx_track.position = Vector2(e_x, 126.0)
+	e_pdx_track.size     = Vector2(BAR_W, 6.0)
+	e_pdx_track.color    = Color(0.10, 0.08, 0.14)
+	panel.add_child(e_pdx_track)
+	var e_pdx_fill := ColorRect.new()
+	e_pdx_fill.name     = "EnemyPDXFill"
+	e_pdx_fill.position = Vector2(e_x, 126.0)
+	e_pdx_fill.size     = Vector2(BAR_W, 6.0)
+	e_pdx_fill.color    = Color(0.65, 0.3, 1.0)
+	panel.add_child(e_pdx_fill)
+
+	# ── Event feed ────────────────────────────────────────────────────────────
+	var ev_sep := Label.new()
+	ev_sep.position             = Vector2(0.0, 140.0)
+	ev_sep.size                 = Vector2(PW, 14.0)
+	ev_sep.text                 = "── EVENTS ──"
+	ev_sep.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ev_sep.add_theme_font_size_override("font_size", 8)
+	ev_sep.modulate             = Color(0.42, 0.42, 0.52)
+	panel.add_child(ev_sep)
+
+	var ev_lbl := Label.new()
+	ev_lbl.name          = "ReplayEvents"
+	ev_lbl.position      = Vector2(20.0, 156.0)
+	ev_lbl.size          = Vector2(PW - 40.0, 110.0)
+	ev_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ev_lbl.add_theme_font_size_override("font_size", 10)
+	ev_lbl.modulate      = Color(0.80, 0.80, 0.80)
+	panel.add_child(ev_lbl)
+
+	# ── Controls ──────────────────────────────────────────────────────────────
+	var speed_btn := Button.new()
+	speed_btn.name     = "SpeedBtn"
+	speed_btn.position = Vector2(PW * 0.5 - 120.0, PH - 36.0)
+	speed_btn.size     = Vector2(110.0, 28.0)
+	speed_btn.text     = "▶▶  2×"
+	speed_btn.add_theme_font_size_override("font_size", 11)
+	speed_btn.pressed.connect(_on_replay_speed_toggled)
+	panel.add_child(speed_btn)
+
+	var stop_btn := Button.new()
+	stop_btn.position = Vector2(PW * 0.5 + 10.0, PH - 36.0)
+	stop_btn.size     = Vector2(110.0, 28.0)
+	stop_btn.text     = "■  CLOSE"
+	stop_btn.add_theme_font_size_override("font_size", 11)
+	stop_btn.pressed.connect(_stop_replay)
+	panel.add_child(stop_btn)
+
+	return panel
+
+func _start_replay() -> void:
+	if _last_result.is_empty():
+		return
+
+	# Index event_log by tick
+	_replay_states.clear()
+	_replay_events_by_tick.clear()
+	for entry: Dictionary in _last_result.get("event_log", []):
+		var t: int = entry.get("tick", 0)
+		if entry.get("type", "") == "state":
+			_replay_states[t] = entry
+		else:
+			if not _replay_events_by_tick.has(t):
+				_replay_events_by_tick[t] = []
+			_replay_events_by_tick[t].append(entry)
+
+	_replay_tick        = 0
+	_replay_speed_fast  = false
+	_replay_timer.wait_time = CombatEngine.TICK_RATE
+
+	# Update title and reset speed button label
+	var title: Label = _replay_panel.get_node("ReplayTitle")
+	title.text = "REPLAY — Round %d  ●  Fight length: %.1fs" % [
+		GameState.current_round - 1,
+		_last_result.get("duration_seconds", 0.0),
+	]
+	var speed_btn: Button = _replay_panel.get_node("SpeedBtn")
+	speed_btn.text = "▶▶  2×"
+
+	_results_panel.visible = false
+	_replay_panel.visible  = true
+	_replay_timer.start()
+
+func _on_replay_tick() -> void:
+	var total_ticks: int = _last_result.get("ticks", 0)
+
+	# 0-tick fight: enemy killed by pre_fire_snapshot before the main loop.
+	# Show tick-0 events (pre-fire shots) then stop immediately.
+	if total_ticks == 0:
+		var pre_events: Array = _replay_events_by_tick.get(0, [])
+		_replay_update_events(pre_events, 0)
+		_replay_timer.stop()
+		var title: Label = _replay_panel.get_node("ReplayTitle")
+		title.text = "REPLAY — Round %d  ●  PRE-FIRE WIN  ✓ DONE" % (GameState.current_round - 1)
+		return
+
+	# Grab state snapshot for this tick
+	var state: Dictionary = _replay_states.get(_replay_tick, {})
+	if not state.is_empty():
+		_replay_update_bars(state)
+		_replay_update_keywords(state)
+
+	# Show events at this tick
+	var tick_events: Array = _replay_events_by_tick.get(_replay_tick, [])
+	_replay_update_events(tick_events, _replay_tick)
+
+	_replay_tick += 1
+	if _replay_tick > total_ticks:
+		_replay_timer.stop()
+		var title: Label = _replay_panel.get_node("ReplayTitle")
+		title.text += "  ✓ DONE"
+
+func _replay_update_bars(state: Dictionary) -> void:
+	const BAR_W: float = 400.0
+	var p_hp_init: float  = maxf(_last_result.get("player_hp_initial", 100.0), 1.0)
+	var e_hp_init: float  = maxf(_last_result.get("enemy_hp_initial",  100.0), 1.0)
+	var p_hp: float       = state.get("player_hp",     0.0)
+	var p_sh: float       = state.get("player_shield", 0.0)
+	var e_hp: float       = state.get("enemy_hp",      0.0)
+	var e_sh: float       = state.get("enemy_shield",  0.0)
+	var p_pdx: float      = state.get("player_paradox", 0.0)
+	var e_pdx: float      = state.get("enemy_paradox",  0.0)
+	var tick: int         = state.get("tick", 0)
+
+	# Update HP fills
+	var p_hp_fill: ColorRect = _replay_panel.get_node("PlayerHPFill")
+	p_hp_fill.size.x = BAR_W * clampf(p_hp / p_hp_init, 0.0, 1.0)
+	var p_hp_lbl: Label = _replay_panel.get_node("PlayerHPVal")
+	p_hp_lbl.text = "%.0f / %.0f" % [p_hp, p_hp_init]
+
+	var e_hp_fill: ColorRect = _replay_panel.get_node("EnemyHPFill")
+	e_hp_fill.size.x = BAR_W * clampf(e_hp / e_hp_init, 0.0, 1.0)
+	var e_hp_lbl: Label = _replay_panel.get_node("EnemyHPVal")
+	e_hp_lbl.text = "%.0f / %.0f" % [e_hp, e_hp_init]
+
+	# Shield fills (proportional to initial HP for a consistent scale)
+	var p_sh_fill: ColorRect = _replay_panel.get_node("PlayerShieldFill")
+	p_sh_fill.size.x = BAR_W * clampf(p_sh / p_hp_init, 0.0, 1.0)
+	var e_sh_fill: ColorRect = _replay_panel.get_node("EnemyShieldFill")
+	e_sh_fill.size.x = BAR_W * clampf(e_sh / e_hp_init, 0.0, 1.0)
+
+	# Paradox bars (fill when approaching threshold 100)
+	const PDX_MAX: float = 150.0
+	var p_pdx_fill: ColorRect = _replay_panel.get_node("PlayerPDXFill")
+	p_pdx_fill.size.x = BAR_W * clampf(p_pdx / PDX_MAX, 0.0, 1.0)
+	p_pdx_fill.color  = Color(1.0, 0.4, 0.4) if p_pdx > 100.0 else Color(0.65, 0.3, 1.0)
+	var e_pdx_fill: ColorRect = _replay_panel.get_node("EnemyPDXFill")
+	e_pdx_fill.size.x = BAR_W * clampf(e_pdx / PDX_MAX, 0.0, 1.0)
+	e_pdx_fill.color  = Color(1.0, 0.4, 0.4) if e_pdx > 100.0 else Color(0.65, 0.3, 1.0)
+
+	# Tick / time in title
+	var title: Label = _replay_panel.get_node("ReplayTitle")
+	title.text = "REPLAY — Round %d  ●  Tick %d / %d  (%.1fs)" % [
+		GameState.current_round - 1,
+		tick,
+		_last_result.get("ticks", 0),
+		tick * CombatEngine.TICK_RATE,
+	]
+
+func _replay_update_keywords(state: Dictionary) -> void:
+	var p_burn: int    = state.get("player_burn", 0)
+	var p_crack: int   = state.get("player_crack", 0)
+	var p_oc: bool     = state.get("player_overcharge", false)
+	var e_burn: int    = state.get("enemy_burn", 0)
+	var e_crack: int   = state.get("enemy_crack", 0)
+	var e_oc: bool     = state.get("enemy_overcharge", false)
+
+	var p_kw: Label = _replay_panel.get_node("PlayerKeywords")
+	var parts: PackedStringArray = []
+	if p_burn  > 0: parts.append("[BURN x%d]" % p_burn)
+	if p_crack > 0: parts.append("[CRACK x%d]" % p_crack)
+	if p_oc:        parts.append("[OVERCHARGE]")
+	p_kw.text = "  ".join(parts)
+
+	var e_kw: Label = _replay_panel.get_node("EnemyKeywords")
+	var eparts: PackedStringArray = []
+	if e_burn  > 0: eparts.append("[BURN x%d]" % e_burn)
+	if e_crack > 0: eparts.append("[CRACK x%d]" % e_crack)
+	if e_oc:        eparts.append("[OVERCHARGE]")
+	e_kw.text = "  ".join(eparts)
+
+func _replay_update_events(events: Array, tick: int) -> void:
+	if events.is_empty():
+		return
+	var ev_lbl: Label = _replay_panel.get_node("ReplayEvents")
+	const MAX_LINES: int = 7
+	var lines: PackedStringArray = ev_lbl.text.split("\n")
+	for entry: Dictionary in events:
+		var actor: String = entry.get("actor", "?")
+		var t: String     = entry.get("type", "")
+		var line: String
+		match t:
+			"shot":           line = "[t%d] %s fired %s → %.0f dmg" % [tick, actor, entry.get("module","?"), entry.get("damage",0.0)]
+			"emp_lock":       line = "[t%d] %s EMP locked: %s" % [tick, actor, entry.get("module","?")]
+			"dodge":          line = "[t%d] %s DODGED a shot" % [tick, actor]
+			"reflect":        line = "[t%d] %s REFLECTED %.0f dmg" % [tick, actor, entry.get("reflected",0.0)]
+			"rewind_shield":  line = "[t%d] %s REWIND → shield restored" % [tick, actor]
+			"paradox_overload": line = "[t%d] %s OVERLOAD → %s disabled" % [tick, actor, entry.get("module","?")]
+			"capacitor_explosion": line = "[t%d] %s CAPACITOR EXPLODED (30 dmg)" % [tick, actor]
+			"overdrive_vent": line = "[t%d] %s VENTED all heat" % [tick, actor]
+			"reactive_armor": line = "[t%d] %s REACTIVE absorbed burst" % [tick, actor]
+			_:                line = ""
+		if line != "":
+			lines.append(line)
+	# Keep last MAX_LINES lines
+	if lines.size() > MAX_LINES:
+		lines = lines.slice(lines.size() - MAX_LINES)
+	ev_lbl.text = "\n".join(lines)
+
+func _on_replay_speed_toggled() -> void:
+	_replay_speed_fast = not _replay_speed_fast
+	_replay_timer.wait_time = CombatEngine.TICK_RATE * (0.5 if _replay_speed_fast else 1.0)
+	var speed_btn: Button = _replay_panel.get_node("SpeedBtn")
+	speed_btn.text = "▶  1×" if _replay_speed_fast else "▶▶  2×"
+
+func _stop_replay() -> void:
+	_replay_timer.stop()
+	_replay_panel.visible  = false
+	_results_panel.visible = true
 
 func _build_run_over_panel() -> Control:
 	var panel := Panel.new()
@@ -205,28 +730,266 @@ func _build_run_over_panel() -> Control:
 
 	return panel
 
+func _build_archetype_panel() -> Panel:
+	# Panel spans nearly full viewport width to fit 5 cards
+	# 5 cards × 226px + 4 gaps × 10px = 1170px; panel = 1250px; left margin = 40px
+	const PANEL_W: float = 1250.0
+	const CARD_W:  float = 226.0
+	const CARD_GAP: float = 10.0
+
+	var panel := Panel.new()
+	panel.position = Vector2(15.0, 155.0)
+	panel.size     = Vector2(PANEL_W, 460.0)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color     = Color(0.06, 0.06, 0.10, 0.98)
+	style.border_color = Color(0.35, 0.35, 0.55)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(8)
+	panel.add_theme_stylebox_override("panel", style)
+
+	var title := Label.new()
+	title.position             = Vector2(0.0, 12.0)
+	title.size                 = Vector2(PANEL_W, 34.0)
+	title.text                 = "CHOOSE YOUR ARCHETYPE"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", Color(0.9, 0.85, 1.0))
+	panel.add_child(title)
+
+	var sub := Label.new()
+	sub.position             = Vector2(0.0, 46.0)
+	sub.size                 = Vector2(PANEL_W, 18.0)
+	sub.text                 = "Each archetype has a strength, a weakness, and a natural counter. Choose wisely."
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_font_size_override("font_size", 10)
+	sub.modulate             = Color(0.55, 0.55, 0.65)
+	panel.add_child(sub)
+
+	var archetypes: Array = [
+		{
+			"id":       "RECOIL_BERSERKER",
+			"name":     "⚙ RECOIL\nBERSERKER",
+			"color":    Color("5a1a00"),
+			"border":   Color("ff6622"),
+			"passive":  "+25% weapon damage.\nRecoil force doubled — accuracy degrades fast.",
+			"strength": "Explosive burst DPS",
+			"weakness": "Accuracy penalty compounds under torque",
+			"counter":  "Light evasive builds",
+			"starters": "Micro Reactor\n+ Railgun (RARE)",
+		},
+		{
+			"id":       "THERMAL_OVERDRIVE",
+			"name":     "🔥 THERMAL\nOVERDRIVE",
+			"color":    Color("5a2a00"),
+			"border":   Color("ff9900"),
+			"passive":  "+25% weapon damage while quadrant heat ≥ 50.\nHeat is a resource, not a penalty.",
+			"strength": "Mid-fight power spike",
+			"weakness": "Sudden meltdown collapse",
+			"counter":  "EMP / burst builds that deny ramp-up",
+			"starters": "Micro Reactor\n+ Plasma Saw (RARE)",
+		},
+		{
+			"id":       "TEMPORAL_ASSASSIN",
+			"name":     "⏳ TEMPORAL\nASSASSIN",
+			"color":    Color("1a0a40"),
+			"border":   Color("8844ff"),
+			"passive":  "Temporal weapons fire\n15% faster (−15% cooldown).",
+			"strength": "First-strike alpha damage",
+			"weakness": "Low durability, high paradox risk",
+			"counter":  "Reflective builds / shield reversion",
+			"starters": "Micro Reactor\n+ Pre-Fire Snapshot (RARE)",
+		},
+		{
+			"id":       "FORTRESS_STABILIZER",
+			"name":     "🛡 FORTRESS\nSTABILIZER",
+			"color":    Color("0a2a1a"),
+			"border":   Color("44cc88"),
+			"passive":  "Shields start +25% higher.\nGyro Stabilizer reduces torque by 60% (vs 30%).",
+			"strength": "Maximum survivability",
+			"weakness": "Low DPS, bleeds out to sustained fire",
+			"counter":  "Entropy field / anti-shield modules",
+			"starters": "Micro Reactor\n+ Energy Shield (UNCOMMON)",
+		},
+		{
+			"id":       "PARADOX_GAMBLER",
+			"name":     "🌀 PARADOX\nGAMBLER",
+			"color":    Color("1a0a2a"),
+			"border":   Color("cc44ff"),
+			"passive":  "+30% weapon damage when paradox > 80.\nCapacitor Bank blows you up if it overloads.",
+			"strength": "Explosive unpredictable scaling",
+			"weakness": "Self-destruction chance mid-fight",
+			"counter":  "Sustained safe builds that outlast chaos",
+			"starters": "Micro Reactor\n+ Capacitor Bank (UNCOMMON)",
+		},
+	]
+
+	var total_w: float = CARD_W * 5.0 + CARD_GAP * 4.0
+	var start_x: float = (PANEL_W - total_w) * 0.5
+	for i in range(archetypes.size()):
+		var arch: Dictionary = archetypes[i]
+		var card := _build_archetype_card(arch, CARD_W)
+		card.position = Vector2(start_x + float(i) * (CARD_W + CARD_GAP), 72.0)
+		panel.add_child(card)
+
+	return panel
+
+func _build_archetype_card(arch: Dictionary, card_w: float) -> Panel:
+	var card := Panel.new()
+	card.size = Vector2(card_w, 370.0)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = arch["color"]
+	style.border_color = arch["border"]
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(6)
+	card.add_theme_stylebox_override("panel", style)
+
+	var inner_w: float = card_w - 14.0
+
+	var name_lbl := Label.new()
+	name_lbl.position             = Vector2(0.0, 10.0)
+	name_lbl.size                 = Vector2(card_w, 44.0)
+	name_lbl.text                 = arch["name"]
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+	card.add_child(name_lbl)
+
+	var div := ColorRect.new()
+	div.position = Vector2(10.0, 56.0)
+	div.size     = Vector2(card_w - 20.0, 1.0)
+	div.color    = arch["border"]
+	card.add_child(div)
+
+	# Passive
+	var passive_hdr := Label.new()
+	passive_hdr.position = Vector2(8.0, 62.0)
+	passive_hdr.size     = Vector2(inner_w, 14.0)
+	passive_hdr.text     = "PASSIVE"
+	passive_hdr.add_theme_font_size_override("font_size", 8)
+	passive_hdr.modulate = Color(0.6, 0.6, 0.7)
+	card.add_child(passive_hdr)
+
+	var passive_lbl := Label.new()
+	passive_lbl.position      = Vector2(8.0, 76.0)
+	passive_lbl.size          = Vector2(inner_w, 62.0)
+	passive_lbl.text          = arch["passive"]
+	passive_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	passive_lbl.add_theme_font_size_override("font_size", 10)
+	card.add_child(passive_lbl)
+
+	# Strength / Weakness / Counter
+	var swc_y: float = 146.0
+	for pair in [["+ STRENGTH", "strength", Color("88ff88")],
+				 ["- WEAKNESS", "weakness", Color("ff8888")],
+				 ["⚡ COUNTER",  "counter",  Color("ffcc44")]]:
+		var hdr := Label.new()
+		hdr.position = Vector2(8.0, swc_y)
+		hdr.size     = Vector2(inner_w, 13.0)
+		hdr.text     = pair[0]
+		hdr.add_theme_font_size_override("font_size", 8)
+		hdr.add_theme_color_override("font_color", pair[2])
+		card.add_child(hdr)
+		var val := Label.new()
+		val.position      = Vector2(8.0, swc_y + 13.0)
+		val.size          = Vector2(inner_w, 24.0)
+		val.text          = arch[pair[1]]
+		val.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		val.add_theme_font_size_override("font_size", 9)
+		card.add_child(val)
+		swc_y += 38.0
+
+	# Starters
+	var starter_hdr := Label.new()
+	starter_hdr.position = Vector2(8.0, swc_y)
+	starter_hdr.size     = Vector2(inner_w, 13.0)
+	starter_hdr.text     = "STARTERS"
+	starter_hdr.add_theme_font_size_override("font_size", 8)
+	starter_hdr.modulate = Color(0.6, 0.6, 0.7)
+	card.add_child(starter_hdr)
+
+	var starter_lbl := Label.new()
+	starter_lbl.position      = Vector2(8.0, swc_y + 13.0)
+	starter_lbl.size          = Vector2(inner_w, 36.0)
+	starter_lbl.text          = arch["starters"]
+	starter_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	starter_lbl.add_theme_font_size_override("font_size", 9)
+	card.add_child(starter_lbl)
+
+	var btn := Button.new()
+	btn.position = Vector2(13.0, 326.0)
+	btn.size     = Vector2(card_w - 26.0, 32.0)
+	btn.text     = "SELECT"
+	btn.add_theme_font_size_override("font_size", 13)
+	btn.pressed.connect(_on_archetype_selected.bind(arch["id"]))
+	card.add_child(btn)
+
+	return card
+
+func _on_archetype_selected(archetype: String) -> void:
+	GameState.archetype = archetype
+	_archetype_panel.visible = false
+	print("[Setup] Archetype chosen: %s" % archetype)
+
+	# Reset grids + shop for a fresh run
+	_protected_cells.clear()
+	player_grid = MechGrid.new("player")
+	enemy_grid  = MechGrid.new("enemy")
+	player_grid_view.refresh(player_grid)
+	enemy_grid_view.refresh(enemy_grid)
+	shop = ShopSystem.new(ModuleRegistry.all_modules, randi())
+
+	GameState.start_run()
+	_give_starter_modules()
+	_enter_shop_phase()
+
 # ── Starter modules ────────────────────────────────────────────────────────
 
 func _give_starter_modules() -> void:
-	# Place the cheapest COMMON POWER module for free — the mech's built-in chassis.
-	var starters: Array[Module] = []
+	# All archetypes share the cheapest COMMON POWER module as the protected core.
+	var power_starters: Array[Module] = []
 	for mod: Module in ModuleRegistry.all_modules:
 		if mod.category == Module.Category.POWER and mod.rarity == Module.Rarity.COMMON:
-			starters.append(mod)
-	if starters.is_empty():
+			power_starters.append(mod)
+	if power_starters.is_empty():
 		return
-	starters.sort_custom(func(a: Module, b: Module) -> bool: return a.cost < b.cost)
-	var core: Module = starters[0]
+	power_starters.sort_custom(func(a: Module, b: Module) -> bool: return a.cost < b.cost)
+	var core: Module = power_starters[0]
 	player_grid.place_module(Vector2i(2, 2), core)
 	_protected_cells.append(Vector2i(2, 2))
+	print("[Setup] Starter core: %s placed (free)" % core.display_name)
+
+	# Archetype-specific second starter at (3,2)
+	var bonus_id := ""
+	match GameState.archetype:
+		"RECOIL_BERSERKER":   bonus_id = "railgun"            # 2×1, high recoil/dmg
+		"THERMAL_OVERDRIVE":  bonus_id = "plasma_saw"         # extreme heat gen
+		"TEMPORAL_ASSASSIN":  bonus_id = "pre_fire_snapshot"  # first-strike identity
+		"FORTRESS_STABILIZER":bonus_id = "energy_shield"      # shield stacking
+		"PARADOX_GAMBLER":    bonus_id = "capacitor_bank"     # explodes on overload
+	if bonus_id != "":
+		var bonus_mod := _find_module_by_id(bonus_id)
+		if bonus_mod != null:
+			player_grid.place_module(Vector2i(3, 2), bonus_mod)
+			print("[Setup] %s starter: %s placed" % [GameState.archetype, bonus_mod.display_name])
+
 	player_grid_view.refresh(player_grid)
 	hud_panel.refresh(player_grid)
-	print("[Setup] Starter: %s placed (free)" % core.display_name)
+
+func _find_module_by_id(mod_id: String) -> Module:
+	for mod: Module in ModuleRegistry.all_modules:
+		if mod.id == mod_id:
+			return mod
+	return null
 
 # ── Phase transitions ──────────────────────────────────────────────────────
 
 func _enter_shop_phase() -> void:
 	phase = Phase.SHOP_PHASE
+	_results_panel.visible = false
+	_replay_panel.visible  = false
+	_replay_timer.stop()
 	_selected_offer = null
 	_sell_mode    = false
 	_upgrade_mode = false
@@ -248,6 +1011,7 @@ func _enter_shop_phase() -> void:
 			mod.cost,
 		])
 
+	shop_panel.set_player_grid(player_grid)
 	shop_panel.show_offers(offers)
 	_action_btn.text     = "READY"
 	_action_btn.disabled = false
@@ -272,7 +1036,7 @@ func _start_combat() -> void:
 
 	# Ghost ladder: 30% chance to face a previously saved opponent build
 	var ghost := _try_load_ghost(GameState.current_round)
-	if ghost != null and randi() % 100 < 30:
+	if ghost != null and GameState.current_round >= 5 and randi() % 100 < 30:
 		enemy_grid = ghost
 		print("[PvP] Using ghost grid for round %d" % GameState.current_round)
 	else:
@@ -321,6 +1085,7 @@ func _on_combat_ended(result: Dictionary) -> void:
 
 func _enter_run_over() -> void:
 	phase = Phase.RUN_OVER
+	_results_panel.visible = false
 	_action_btn.disabled = true
 	var stats_lbl: Label = _run_over_panel.get_node("StatsLabel")
 	stats_lbl.text = (
@@ -341,18 +1106,9 @@ func _on_action_pressed() -> void:
 		Phase.ROUND_END:  _enter_shop_phase()
 
 func _on_restart_pressed() -> void:
-	_run_over_panel.visible = false
-	# Clear player grid
-	_protected_cells.clear()
-	player_grid = MechGrid.new("player")
-	enemy_grid  = MechGrid.new("enemy")
-	player_grid_view.refresh(player_grid)
-	enemy_grid_view.refresh(enemy_grid)
-	# Reset shop with new seed
-	shop = ShopSystem.new(ModuleRegistry.all_modules, randi())
-	GameState.start_run()
-	_give_starter_modules()
-	_enter_shop_phase()
+	_run_over_panel.visible  = false
+	_results_panel.visible   = false
+	_archetype_panel.visible = true
 
 # ── Shop interaction ───────────────────────────────────────────────────────
 
@@ -421,6 +1177,7 @@ func _on_player_cell_clicked(pos: Vector2i) -> void:
 		hud_panel.refresh(player_grid)
 		_update_status()
 		print("[Shop] Placed: %s at (%d,%d)" % [_selected_offer.display_name, pos.x, pos.y])
+		shop_panel.remove_offer(_selected_offer)
 		_selected_offer = null
 		shop_panel.deselect()
 		player_grid_view.clear_highlights()
@@ -472,6 +1229,87 @@ func _update_status(suffix: String = "") -> void:
 		text += "  |  " + suffix
 	_status_label.text = text
 
+func _populate_results_panel(result: Dictionary) -> void:
+	var winner: String  = result.winner
+	var log:    Array   = result.get("event_log", [])
+
+	var p_dmg:      float = 0.0
+	var e_dmg:      float = 0.0
+	var p_shots:    int   = 0
+	var e_shots:    int   = 0
+	var p_disabled: int   = 0
+	var e_disabled: int   = 0
+	var events: Array[String] = []
+
+	const HIGHLIGHT := ["dodge", "paradox_overload", "emp_lock", "reflect",
+		"rewind_shield", "capacitor_explosion", "overdrive_vent",
+		"reactive_armor", "heat_disable"]
+
+	for entry: Dictionary in log:
+		var t:     String = entry.get("type",  "")
+		var actor: String = entry.get("actor", "?")
+		var tick:  int    = entry.get("tick",  0)
+		if t == "shot":
+			var d: float = entry.get("damage", 0.0)
+			if actor == "player": p_dmg += d; p_shots += 1
+			else:                 e_dmg += d; e_shots += 1
+		if t in ["heat_disable", "paradox_overload"]:
+			if actor == "player": p_disabled += 1
+			else:                 e_disabled += 1
+		if t in HIGHLIGHT:
+			match t:
+				"dodge":               events.append("t%d  %s dodged" % [tick, actor])
+				"paradox_overload":    events.append("t%d  %s OVERLOAD [%s]" % [tick, actor, entry.get("module", "?")])
+				"emp_lock":            events.append("t%d  %s EMP → %s" % [tick, actor, entry.get("module", "?")])
+				"reflect":             events.append("t%d  %s reflected %.0f" % [tick, actor, entry.get("reflected", 0.0)])
+				"rewind_shield":       events.append("t%d  %s REWIND SHIELD" % [tick, actor])
+				"capacitor_explosion": events.append("t%d  %s CAPACITOR BLAST" % [tick, actor])
+				"overdrive_vent":      events.append("t%d  %s VENT (−15 HP)" % [tick, actor])
+				"reactive_armor":      events.append("t%d  %s reactive armor" % [tick, actor])
+				"heat_disable":        events.append("t%d  %s heat-disabled [%s]" % [tick, actor, entry.get("module", "?")])
+
+	# Header
+	var header: Label = _results_panel.get_node("Header")
+	match winner:
+		"player":
+			header.text = "VICTORY"
+			header.add_theme_color_override("font_color", Color("40dd60"))
+		"enemy":
+			header.text = "DEFEAT"
+			header.add_theme_color_override("font_color", Color("dd3020"))
+		_:
+			header.text = "DRAW"
+			header.add_theme_color_override("font_color", Color("d0c020"))
+
+	# Subheader
+	var sub: Label = _results_panel.get_node("Subheader")
+	var timeout_tag := "  [TIMEOUT]" if result.ticks >= CombatEngine.MAX_TICKS else ""
+	sub.text = "Round %d%s  ·  %.1f seconds" % [
+		GameState.current_round - 1, timeout_tag, result.duration_seconds]
+
+	# Per-side stats
+	var p_lbl: Label = _results_panel.get_node("PlayerStats")
+	p_lbl.text = (
+		"PLAYER\n\n"
+		+ "Damage:   %.0f  (%d shots)\n" % [p_dmg, p_shots]
+		+ "HP left:  %.1f\n" % result.player_hp_remaining
+		+ "Disabled: %d module%s" % [p_disabled, "s" if p_disabled != 1 else ""]
+	)
+
+	var e_lbl: Label = _results_panel.get_node("EnemyStats")
+	e_lbl.text = (
+		"ENEMY\n\n"
+		+ "Damage:   %.0f  (%d shots)\n" % [e_dmg, e_shots]
+		+ "HP left:  %.1f\n" % result.enemy_hp_remaining
+		+ "Disabled: %d module%s" % [e_disabled, "s" if e_disabled != 1 else ""]
+	)
+
+	# Notable events
+	var ev_lbl: Label = _results_panel.get_node("Events")
+	ev_lbl.text = "\n".join(events.slice(-8)) if not events.is_empty() else "— No notable events —"
+
+	_results_panel.visible = true
+
 func _print_combat_summary(result: Dictionary) -> void:
 	var timeout_tag := " [TIMEOUT]" if result.ticks >= CombatEngine.MAX_TICKS else ""
 	print("[Combat] Winner: %s%s | Player HP: %.1f | Enemy HP: %.1f | Ticks: %d (%.1fs)" % [
@@ -482,7 +1320,10 @@ func _print_combat_summary(result: Dictionary) -> void:
 		result.ticks,
 		result.duration_seconds,
 	])
+	_last_result = result
 	_update_combat_log(result.get("event_log", []), result.winner)
+	if phase != Phase.RUN_OVER:
+		_populate_results_panel(result)
 
 func _update_combat_log(log: Array, winner: String) -> void:
 	const HIGHLIGHT := ["dodge", "paradox_overload", "emp_lock", "reflect",
@@ -611,6 +1452,7 @@ func reroll_shop() -> bool:
 	if not GameState.spend_gold(cost):
 		return false
 	var new_offers := shop.reroll(GameState.current_round)
+	shop_panel.set_player_grid(player_grid)
 	shop_panel.show_offers(new_offers)
 	_update_status()
 	return true

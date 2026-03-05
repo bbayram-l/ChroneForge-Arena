@@ -14,7 +14,7 @@ func _build_ui() -> void:
 	# Background
 	var bg := ColorRect.new()
 	bg.position = Vector2.ZERO
-	bg.size     = Vector2(1280.0, 720.0)
+	bg.size     = Vector2(1280.0, 800.0)
 	bg.color    = Color(0.04, 0.04, 0.06)
 	canvas.add_child(bg)
 
@@ -27,7 +27,7 @@ func _build_ui() -> void:
 
 	# Title
 	var title := Label.new()
-	title.position = Vector2(0.0, 190.0)
+	title.position = Vector2(0.0, 230.0)
 	title.size     = Vector2(1280.0, 80.0)
 	title.text     = "CHRONOFORGE ARENA"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -37,7 +37,7 @@ func _build_ui() -> void:
 
 	# Tagline
 	var tag := Label.new()
-	tag.position = Vector2(0.0, 276.0)
+	tag.position = Vector2(0.0, 316.0)
 	tag.size     = Vector2(1280.0, 28.0)
 	tag.text     = "Build unstable modular mechs.  Break physics.  Bend time."
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -47,30 +47,30 @@ func _build_ui() -> void:
 
 	# Divider
 	var div := ColorRect.new()
-	div.position = Vector2(540.0, 318.0)
+	div.position = Vector2(540.0, 358.0)
 	div.size     = Vector2(200.0, 1.0)
 	div.color    = Color(0.3, 0.3, 0.35)
 	canvas.add_child(div)
 
 	# PLAY button
-	var play_btn := _make_btn("PLAY", Vector2(515.0, 336.0), Vector2(250.0, 56.0), 22)
+	var play_btn := _make_btn("PLAY", Vector2(515.0, 376.0), Vector2(250.0, 56.0), 22)
 	play_btn.pressed.connect(_on_play)
 	canvas.add_child(play_btn)
 
 	# Fullscreen toggle
-	var fs_btn := _make_btn("FULLSCREEN: OFF", Vector2(515.0, 404.0), Vector2(250.0, 38.0), 13)
+	var fs_btn := _make_btn("FULLSCREEN: OFF", Vector2(515.0, 444.0), Vector2(250.0, 38.0), 13)
 	fs_btn.name = "FullscreenBtn"
 	fs_btn.pressed.connect(_on_fullscreen_pressed.bind(fs_btn))
 	canvas.add_child(fs_btn)
 
 	# QUIT button
-	var quit_btn := _make_btn("QUIT", Vector2(515.0, 454.0), Vector2(250.0, 38.0), 13)
+	var quit_btn := _make_btn("QUIT", Vector2(515.0, 494.0), Vector2(250.0, 38.0), 13)
 	quit_btn.pressed.connect(_on_quit)
 	canvas.add_child(quit_btn)
 
 	# Version label (bottom-right)
 	var ver := Label.new()
-	ver.position = Vector2(1170.0, 702.0)
+	ver.position = Vector2(1170.0, 782.0)
 	ver.size     = Vector2(100.0, 16.0)
 	ver.text     = "v0.8-demo"
 	ver.add_theme_font_size_override("font_size", 10)
@@ -93,10 +93,10 @@ func _on_play() -> void:
 func _on_fullscreen_pressed(btn: Button) -> void:
 	_fullscreen = not _fullscreen
 	if _fullscreen:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		get_window().mode = Window.MODE_FULLSCREEN
 		btn.text = "FULLSCREEN: ON"
 	else:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		get_window().mode = Window.MODE_WINDOWED
 		btn.text = "FULLSCREEN: OFF"
 
 func _on_quit() -> void:

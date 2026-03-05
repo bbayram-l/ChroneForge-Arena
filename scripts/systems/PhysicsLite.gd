@@ -37,11 +37,12 @@ func torque_imbalance() -> float:
 
 ## StabilityModifier: max(0.1, 1 − (TorqueImbalance × 0.5))
 ## Floor at 0.1 prevents negative or zero modifiers on extreme imbalance.
-## gyro_stabilizer: reduces effective torque imbalance by 30%.
+## gyro_stabilizer: reduces effective torque imbalance by 30% (60% for FORTRESS_STABILIZER).
 func stability_modifier() -> float:
 	var ti := torque_imbalance()
 	if _has_module("gyro_stabilizer"):
-		ti *= 0.70
+		var fortress := GameState.archetype == "FORTRESS_STABILIZER" and grid.owner_id == "player"
+		ti *= 0.40 if fortress else 0.70
 	return maxf(0.1, 1.0 - ti * 0.5)
 
 # ── Recoil ─────────────────────────────────────────────────────────────────

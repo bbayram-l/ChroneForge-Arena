@@ -197,6 +197,26 @@ static func _populate(grid: MechGrid, archetype: int, round_num: int, max_rarity
 		if mod != null:
 			grid.place_module(Vector2i(slot[1], slot[2]), mod)
 
+	_apply_star_upgrades(grid, tier)
+
+## Upgrade enemy modules based on tier so they scale with the player's build progression.
+## Tier 1: weapon ★2. Tier 2: weapon ★3, power ★2. Tier 3: all modules ★3.
+static func _apply_star_upgrades(grid: MechGrid, tier: int) -> void:
+	if tier == 0:
+		return
+	for mod: Module in grid.get_all_modules():
+		var upgrades: int = 0
+		match tier:
+			1:
+				upgrades = 1 if mod.category == Module.Category.WEAPON else 0
+			2:
+				if   mod.category == Module.Category.WEAPON: upgrades = 2
+				elif mod.category == Module.Category.POWER:  upgrades = 1
+			3:
+				upgrades = 2   # all modules reach ★3
+		for _i in range(upgrades):
+			mod.upgrade()
+
 ## Returns 0–3 tier based on round.
 static func _tier_for_round(round_num: int) -> int:
 	if round_num <= 3:   return 0

@@ -4,7 +4,7 @@
 class_name ShopSystem
 extends RefCounted
 
-const SHOP_SIZE: int = 5
+const SHOP_SIZE: int = 7
 
 var _pool: Array[Module] = []
 var rng: RandomNumberGenerator
@@ -35,12 +35,21 @@ static func rarity_weights(current_round: int) -> Dictionary:
 			Module.Rarity.EPIC:       5,
 			Module.Rarity.LEGENDARY:  0,
 		}
+	elif current_round <= 14:
+		return {
+			Module.Rarity.COMMON:    35,
+			Module.Rarity.UNCOMMON:  30,
+			Module.Rarity.RARE:      20,
+			Module.Rarity.EPIC:      10,
+			Module.Rarity.LEGENDARY:  5,
+		}
+	# Round 15+ — heavy late-game pressure; Epic/Legendary must appear every shop
 	return {
-		Module.Rarity.COMMON:    35,
-		Module.Rarity.UNCOMMON:  30,
-		Module.Rarity.RARE:      20,
-		Module.Rarity.EPIC:      10,
-		Module.Rarity.LEGENDARY:  5,
+		Module.Rarity.COMMON:    15,
+		Module.Rarity.UNCOMMON:  20,
+		Module.Rarity.RARE:      30,
+		Module.Rarity.EPIC:      25,
+		Module.Rarity.LEGENDARY: 10,
 	}
 
 ## Chance that a given slot is forced to a temporal module.

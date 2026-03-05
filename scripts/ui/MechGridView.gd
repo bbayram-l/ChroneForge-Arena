@@ -138,6 +138,23 @@ func _draw() -> void:
 		draw_line(ideal, com_px, Color("ff6030aa"), 1.5)
 	draw_circle(com_px, 5.0, Color("ff6030"))
 
+	# Synergy borders — colour-coded per active synergy
+	if _current_grid != null:
+		var active_syns := SynergySystem.active_synergies(_current_grid)
+		if not active_syns.is_empty():
+			var cat_colors: Dictionary = {}
+			for syn: Dictionary in active_syns:
+				for cat: int in syn["cats"]:
+					if not cat_colors.has(cat):
+						cat_colors[cat] = syn["color"]
+			for cy in range(MechGrid.GRID_HEIGHT):
+				for cx in range(MechGrid.GRID_WIDTH):
+					var cell := _current_grid.get_cell(Vector2i(cx, cy))
+					if not cell.is_empty() and cat_colors.has(cell.module.category):
+						var px := Vector2(float(cx), float(cy)) * step
+						draw_rect(Rect2(px, Vector2(float(CELL_SIZE), float(CELL_SIZE))),
+							cat_colors[cell.module.category], false, 2.0)
+
 # ── Internal rendering ──────────────────────────────────────────────────────
 
 func _redraw_cell(pos: Vector2i) -> void:

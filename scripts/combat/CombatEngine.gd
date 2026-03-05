@@ -50,7 +50,7 @@ var _e_burst_ready: Dictionary = {}
 var _p_emp_locks: Dictionary = {}
 var _e_emp_locks: Dictionary = {}
 
-# Timeline Split: remaining active seconds (2× damage window)
+# Timeline Split: remaining active seconds (1.5× damage window)
 var _p_timeline_active: float = 0.0
 var _e_timeline_active: float = 0.0
 
@@ -63,8 +63,17 @@ var _e_shield_snap: float = 0.0
 # Entropy Field: cumulative weapon-damage debuff multipliers
 var _p_dmg_mult: float = 1.0   # player weapon output (debuffed by enemy entropy_field)
 var _e_dmg_mult: float = 1.0   # enemy  weapon output (debuffed by player entropy_field)
-var _p_entropy_cd: int = 10    # ticks until enemy entropy fires against player
-var _e_entropy_cd: int = 10    # ticks until player entropy fires against enemy
+var _p_entropy_cd: int = 15    # ticks until enemy entropy fires against player
+var _e_entropy_cd: int = 15    # ticks until player entropy fires against enemy
+var _pre_fire_active: bool = false   # true during pre_fire_snapshot volley → 0.8× damage
+
+# ── Status Keywords ─────────────────────────────────────────────────────────
+# Burn: heat-generating shots apply a DoT stack to the target (0.5 HP/tick per stack)
+var _p_burn: float = 0.0
+var _e_burn: float = 0.0
+# Crack: high-recoil shots (recoil_force > 1) add structural stress to the shooter (+2% acc pen/stack)
+var _p_crack: int = 0
+var _e_crack: int = 0
 
 func _init(p_grid: MechGrid, e_grid: MechGrid, rng_seed: int = 0) -> void:
 	player_grid = p_grid
@@ -82,6 +91,8 @@ func _init(p_grid: MechGrid, e_grid: MechGrid, rng_seed: int = 0) -> void:
 	# Wire paradox overload callbacks
 	_p_paradox.module_disabled.connect(_on_module_disabled.bind(true))
 	_e_paradox.module_disabled.connect(_on_module_disabled.bind(false))
+	_p_paradox.joint_lock_absorbed.connect(_on_joint_lock_absorbed.bind(true))
+	_e_paradox.joint_lock_absorbed.connect(_on_joint_lock_absorbed.bind(false))
 
 	rng = RandomNumberGenerator.new()
 	rng.seed = rng_seed
@@ -90,6 +101,14 @@ func _init(p_grid: MechGrid, e_grid: MechGrid, rng_seed: int = 0) -> void:
 	player_shield = _base_shield(player_grid)
 	enemy_hp      = _base_hp(enemy_grid)
 	enemy_shield  = _base_shield(enemy_grid)
+	# FORTRESS_STABILIZER passive: shields start 25% higher
+	if GameState.archetype == "FORTRESS_STABILIZER":
+		player_shield *= 1.25
+	# Synergy: Fortress (STRUCTURAL + DEFENSE) → +15% max HP
+	if _has_category(player_grid, Module.Category.STRUCTURAL) and _has_category(player_grid, Module.Category.DEFENSE):
+		player_hp *= 1.15
+	if _has_category(enemy_grid, Module.Category.STRUCTURAL) and _has_category(enemy_grid, Module.Category.DEFENSE):
+		enemy_hp *= 1.15
 
 # ── Public API ─────────────────────────────────────────────────────────────
 
@@ -108,14 +127,32 @@ func run_simulation() -> Dictionary:
 	_e_shield_snap    = enemy_shield
 	_p_dmg_mult       = 1.0
 	_e_dmg_mult       = 1.0
-	_p_entropy_cd     = 10
-	_e_entropy_cd     = 10
+	_p_entropy_cd     = 15
+	_e_entropy_cd     = 15
+	_p_burn           = 0.0
+	_e_burn           = 0.0
+	_p_crack          = 0
+	_e_crack          = 0
 
-	# timeline_split: active for first 1.5 seconds of combat
-	_p_timeline_active = 1.5 if _has_module(player_grid, "timeline_split") else 0.0
-	_e_timeline_active = 1.5 if _has_module(enemy_grid,  "timeline_split") else 0.0
+	# Temporal pre-load: each temporal module contributes 5 starting paradox.
+	# At 4 modules → 20/100; at 6 → 30/100. This means the meta tax bites from
+	# tick 1 and short fights don't let temporal builds dodge their own downside.
+	var _p_t_count := 0
+	var _e_t_count := 0
+	for mod in player_grid.get_all_modules():
+		if mod.category == Module.Category.TEMPORAL:
+			_p_t_count += 1
+	for mod in enemy_grid.get_all_modules():
+		if mod.category == Module.Category.TEMPORAL:
+			_e_t_count += 1
+	_p_paradox.paradox = float(_p_t_count) * 5.0
+	_e_paradox.paradox = float(_e_t_count) * 5.0
 
-	# pre_fire_snapshot: all weapons fire once before the main loop
+	# pre_fire_snapshot: all weapons fire once before the main loop.
+	# Runs BEFORE timeline_split is activated so the opening volley does not
+	# benefit from the 2× damage window — they are distinct mechanics.
+	# 0.8× snapshot penalty: pre-fire shots are unguided/untargeted.
+	_pre_fire_active = true
 	if _has_module(player_grid, "pre_fire_snapshot"):
 		for mod in player_grid.get_all_modules():
 			if mod.category == Module.Category.WEAPON and not mod.disabled:
@@ -124,6 +161,11 @@ func run_simulation() -> Dictionary:
 		for mod in enemy_grid.get_all_modules():
 			if mod.category == Module.Category.WEAPON and not mod.disabled:
 				_fire_weapon(mod, false)
+	_pre_fire_active = false
+
+	# timeline_split: active for first 1.5 seconds of combat (starts after pre-fire)
+	_p_timeline_active = 1.5 if _has_module(player_grid, "timeline_split") else 0.0
+	_e_timeline_active = 1.5 if _has_module(enemy_grid,  "timeline_split") else 0.0
 
 	while tick_count < MAX_TICKS and player_hp > 0.0 and enemy_hp > 0.0:
 		_tick()
@@ -149,7 +191,9 @@ func run_simulation() -> Dictionary:
 
 	var result := {
 		"winner":              winner,
+		"player_hp_initial":   _base_hp(player_grid),
 		"player_hp_remaining": player_hp,
+		"enemy_hp_initial":    _base_hp(enemy_grid),
 		"enemy_hp_remaining":  enemy_hp,
 		"ticks":               tick_count,
 		"duration_seconds":    tick_count * TICK_RATE,
@@ -167,12 +211,52 @@ func _tick() -> void:
 	# chrono_anchor: owning side's anchor reduces the OPPONENT's paradox gain rate by 20%
 	var p_pdx_mult := 0.80 if _has_module(enemy_grid, "chrono_anchor") else 1.0
 	var e_pdx_mult := 0.80 if _has_module(player_grid, "chrono_anchor") else 1.0
+	# OVERCHARGE keyword: power surplus > 1.1× reduces paradox gain by 10%
+	if _p_power.total_draw() > 0.0 and _p_power.total_generation() > _p_power.total_draw() * 1.1:
+		p_pdx_mult *= 0.9
+	if _e_power.total_draw() > 0.0 and _e_power.total_generation() > _e_power.total_draw() * 1.1:
+		e_pdx_mult *= 0.9
+	# Synergy: Flux (POWER + TEMPORAL) → -10% paradox gain rate
+	if _has_category(player_grid, Module.Category.POWER) and _has_category(player_grid, Module.Category.TEMPORAL):
+		p_pdx_mult *= 0.9
+	if _has_category(enemy_grid, Module.Category.POWER) and _has_category(enemy_grid, Module.Category.TEMPORAL):
+		e_pdx_mult *= 0.9
 	_p_paradox.tick(d, rng, p_pdx_mult)
 	_e_paradox.tick(d, rng, e_pdx_mult)
 
 	# 2. Heat dissipation
 	_p_heat.dissipate(d)
 	_e_heat.dissipate(d)
+
+	# BURN keyword: DoT from accumulated stacks (0.5 HP/tick per stack)
+	if _p_burn > 0.0:
+		player_hp = maxf(0.0, player_hp - _p_burn * 0.5)
+	if _e_burn > 0.0:
+		enemy_hp = maxf(0.0, enemy_hp - _e_burn * 0.5)
+	# Burn decay: THERMAL modules remove 2 stacks/sec; Overdrive Vent clears all on activation
+	var p_thermal_count := 0
+	for mod: Module in player_grid.get_all_modules():
+		if mod.category == Module.Category.THERMAL and not mod.disabled:
+			p_thermal_count += 1
+	_p_burn = maxf(0.0, _p_burn - p_thermal_count * 2.0 * d)
+	var e_thermal_count := 0
+	for mod: Module in enemy_grid.get_all_modules():
+		if mod.category == Module.Category.THERMAL and not mod.disabled:
+			e_thermal_count += 1
+	_e_burn = maxf(0.0, _e_burn - e_thermal_count * 2.0 * d)
+
+	# CRACK keyword decay: Blast Plating absorbs 1 crack stack every 2 seconds (20 ticks)
+	if tick_count % 20 == 0:
+		var p_blast := 0
+		for mod: Module in player_grid.get_all_modules():
+			if mod.id == "blast_plating" and not mod.disabled:
+				p_blast += 1
+		_p_crack = maxi(0, _p_crack - p_blast)
+		var e_blast := 0
+		for mod: Module in enemy_grid.get_all_modules():
+			if mod.id == "blast_plating" and not mod.disabled:
+				e_blast += 1
+		_e_crack = maxi(0, _e_crack - e_blast)
 
 	# repair_drone: regen 1 HP per tick (10 HP/sec), capped at starting max
 	if _has_module(player_grid, "repair_drone"):
@@ -185,6 +269,7 @@ func _tick() -> void:
 		for q in range(4):
 			if _p_heat.quadrant_heat[q] >= HeatSystem.DISABLE_THRESHOLD:
 				_p_heat.quadrant_heat = [0.0, 0.0, 0.0, 0.0]
+				_p_burn = 0.0   # Overdrive Vent also dumps all Burn stacks
 				player_hp = maxf(0.0, player_hp - 15.0)
 				_log("overdrive_vent", true, {})
 				break
@@ -192,6 +277,7 @@ func _tick() -> void:
 		for q in range(4):
 			if _e_heat.quadrant_heat[q] >= HeatSystem.DISABLE_THRESHOLD:
 				_e_heat.quadrant_heat = [0.0, 0.0, 0.0, 0.0]
+				_e_burn = 0.0   # Overdrive Vent also dumps all Burn stacks
 				enemy_hp = maxf(0.0, enemy_hp - 15.0)
 				_log("overdrive_vent", false, {})
 				break
@@ -216,18 +302,18 @@ func _tick() -> void:
 	_p_timeline_active = maxf(0.0, _p_timeline_active - d)
 	_e_timeline_active = maxf(0.0, _e_timeline_active - d)
 
-	# Entropy Field: every 10 ticks (1 s) debuff opponent weapon damage by 15% (floor 0.3×)
+	# Entropy Field: every 15 ticks (1.5 s) debuff opponent weapon damage by 15% (floor 0.5×)
 	if _has_module(player_grid, "entropy_field"):
 		_e_entropy_cd -= 1
 		if _e_entropy_cd <= 0:
-			_e_dmg_mult = maxf(0.3, _e_dmg_mult * 0.85)
-			_e_entropy_cd = 10
+			_e_dmg_mult = maxf(0.5, _e_dmg_mult * 0.85)
+			_e_entropy_cd = 15
 			_log("entropy_field", true, {"enemy_dmg_mult": snappedf(_e_dmg_mult, 0.01)})
 	if _has_module(enemy_grid, "entropy_field"):
 		_p_entropy_cd -= 1
 		if _p_entropy_cd <= 0:
-			_p_dmg_mult = maxf(0.3, _p_dmg_mult * 0.85)
-			_p_entropy_cd = 10
+			_p_dmg_mult = maxf(0.5, _p_dmg_mult * 0.85)
+			_p_entropy_cd = 15
 			_log("entropy_field", false, {"player_dmg_mult": snappedf(_p_dmg_mult, 0.01)})
 
 	# Update 2-second shield snapshot (every 20 ticks = 2 s)
@@ -310,28 +396,62 @@ func _fire_weapon(weapon: Module, is_player: bool) -> void:
 	var opp_grid_j := enemy_grid if is_player else player_grid
 	if _has_module(opp_grid_j, "targeting_jammer"):
 		acc_pen = minf(1.0, acc_pen + 0.15)
+	# Synergy: Targeting (AI + WEAPON) → -5% accuracy penalty
+	if _has_category(grid, Module.Category.AI):
+		acc_pen = maxf(0.0, acc_pen - 0.05)
+	# CRACK keyword: each stack adds 2% accuracy penalty to the shooter
+	acc_pen = minf(0.5, acc_pen + float(_p_crack if is_player else _e_crack) * 0.02)
 
 	# AI modifiers
 	# targeting_matrix: +10% damage
 	var dmg_mult := 1.10 if _has_module(grid, "targeting_matrix") else 1.0
+	# Synergy: Overcharge (POWER + WEAPON) → +8% damage
+	if _has_category(grid, Module.Category.POWER):
+		dmg_mult *= 1.08
+	# pre_fire_snapshot penalty: 0.8× — unguided opening volley
+	if _pre_fire_active:
+		dmg_mult *= 0.8
 	# burst_logic: 1.4× damage, 2× cooldown
 	var burst := _has_module(grid, "burst_logic")
 	if burst:
 		dmg_mult *= 1.4
-	# timeline_split: 2× damage during the 1.5-second active window
+	# timeline_split: 1.5× damage during the 1.5-second active window
 	var timeline_active := _p_timeline_active if is_player else _e_timeline_active
 	if timeline_active > 0.0:
-		dmg_mult *= 2.0
+		dmg_mult *= 1.5
+	# Archetype passives (player-side only)
+	if is_player:
+		match GameState.archetype:
+			"RECOIL_BERSERKER":
+				# +25% damage, but recoil is doubled (applied below)
+				dmg_mult *= 1.25
+			"THERMAL_OVERDRIVE":
+				# +25% damage while the weapon's quadrant is running hot (≥50 heat)
+				var q_heat: float = heat.quadrant_heat[heat.quadrant_of(pos)]
+				if q_heat >= 50.0:
+					dmg_mult *= 1.25
+			"PARADOX_GAMBLER":
+				# +30% damage once paradox exceeds 80 — high risk, high reward
+				if _p_paradox.paradox > 80.0:
+					dmg_mult *= 1.30
 	# entropy_field debuff on this side's output
 	var entropy_mult := _p_dmg_mult if is_player else _e_dmg_mult
 
 	# Apply side effects (recoil and heat) before any early-out below
 	physics.apply_recoil(weapon)
-	heat.add_heat(pos, weapon.heat_gen)
+	# RECOIL_BERSERKER: doubled recoil force feeds the accuracy-penalty weakness
+	if is_player and GameState.archetype == "RECOIL_BERSERKER":
+		physics.apply_recoil(weapon)
+	# Synergy: Heat Sink (THERMAL + WEAPON) → 30% less heat generated
+	var effective_heat_gen := weapon.heat_gen * (0.70 if _has_category(grid, Module.Category.THERMAL) else 1.0)
+	heat.add_heat(pos, effective_heat_gen)
 
 	# Reset cooldown
 	var base_cd := 1.0 / weapon.fire_rate if weapon.fire_rate > 0.0 else 9999.0
 	cds[wid] = base_cd * (2.0 if burst else 1.0)
+	# TEMPORAL_ASSASSIN: temporal weapons fire 15% faster
+	if is_player and GameState.archetype == "TEMPORAL_ASSASSIN" and weapon.category == Module.Category.TEMPORAL:
+		cds[wid] *= 0.85
 
 	# emp_burst special: lock one random opponent module for 3 s, deal no direct damage
 	if wid == "emp_burst":
@@ -364,6 +484,24 @@ func _fire_weapon(weapon: Module, is_player: bool) -> void:
 		"power_eff":  snappedf(power_eff, 0.01),
 		"stability":  snappedf(final_stab, 0.01),
 	})
+
+	# BURN keyword: heat-generating weapons apply 1 Burn stack to the target per shot
+	if weapon.heat_gen > 0.0:
+		if is_player: _e_burn += 1.0
+		else:         _p_burn += 1.0
+
+	# CRACK keyword: high-recoil shots stress the shooter's structural frame
+	if weapon.recoil_force > 1.0:
+		if is_player: _p_crack += 1
+		else:         _e_crack += 1
+
+	# Synergy: Echo Shot (TEMPORAL + WEAPON) → 5% chance to re-fire at full damage
+	if _has_category(grid, Module.Category.TEMPORAL) and rng.randf() < 0.05:
+		if is_player:
+			_deal_to_enemy(damage, weapon)
+		else:
+			_deal_to_player(damage, weapon)
+		_log("echo_shot", is_player, {"module": wid, "damage": snappedf(damage, 0.01)})
 
 # ── Damage application ─────────────────────────────────────────────────────
 
@@ -456,6 +594,9 @@ func _on_module_disabled(mod: Module, is_player: bool) -> void:
 			enemy_hp = maxf(0.0, enemy_hp - 30.0)
 		_log("capacitor_explosion", is_player, {"damage": 30.0})
 
+func _on_joint_lock_absorbed(mod: Module, is_player: bool) -> void:
+	_log("joint_lock", is_player, {"module": mod.id})
+
 # ── Logging ────────────────────────────────────────────────────────────────
 
 func _log(event_type: String, is_player: bool, data: Dictionary) -> void:
@@ -464,17 +605,25 @@ func _log(event_type: String, is_player: bool, data: Dictionary) -> void:
 	event_log.append(entry)
 
 func _log_tick_state() -> void:
+	var p_draw := _p_power.total_draw()
+	var e_draw := _e_power.total_draw()
 	event_log.append({
-		"tick":            tick_count,
-		"type":            "state",
-		"player_hp":       snappedf(player_hp,     0.1),
-		"player_shield":   snappedf(player_shield,  0.1),
-		"enemy_hp":        snappedf(enemy_hp,       0.1),
-		"enemy_shield":    snappedf(enemy_shield,   0.1),
-		"player_paradox":  snappedf(_p_paradox.paradox, 0.1),
-		"enemy_paradox":   snappedf(_e_paradox.paradox, 0.1),
-		"player_heat":     _p_heat.get_state(),
-		"enemy_heat":      _e_heat.get_state(),
+		"tick":              tick_count,
+		"type":              "state",
+		"player_hp":         snappedf(player_hp,     0.1),
+		"player_shield":     snappedf(player_shield,  0.1),
+		"enemy_hp":          snappedf(enemy_hp,       0.1),
+		"enemy_shield":      snappedf(enemy_shield,   0.1),
+		"player_paradox":    snappedf(_p_paradox.paradox, 0.1),
+		"enemy_paradox":     snappedf(_e_paradox.paradox, 0.1),
+		"player_heat":       _p_heat.get_state(),
+		"enemy_heat":        _e_heat.get_state(),
+		"player_burn":       int(_p_burn),
+		"enemy_burn":        int(_e_burn),
+		"player_crack":      _p_crack,
+		"enemy_crack":       _e_crack,
+		"player_overcharge": p_draw > 0.0 and _p_power.total_generation() > p_draw * 1.1,
+		"enemy_overcharge":  e_draw > 0.0 and _e_power.total_generation() > e_draw * 1.1,
 	})
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -502,3 +651,9 @@ static func _find_module(grid: MechGrid, module_id: String) -> Module:
 		if mod.id == module_id:
 			return mod
 	return null
+
+static func _has_category(grid: MechGrid, cat: Module.Category) -> bool:
+	for mod in grid.get_all_modules():
+		if mod.category == cat and not mod.disabled:
+			return true
+	return false

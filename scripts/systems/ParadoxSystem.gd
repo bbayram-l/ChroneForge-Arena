@@ -11,6 +11,7 @@ const TAX_4_TEMPORAL: float = 0.20        # +20% gain rate at ≥4 temporal modu
 const TAX_6_TEMPORAL: float = 0.30        # additional +30% at ≥6
 
 signal module_disabled(mod: Module)
+signal joint_lock_absorbed(mod: Module)
 
 var grid: MechGrid
 var paradox: float = 0.0
@@ -49,8 +50,13 @@ func _try_overload(rng: RandomNumberGenerator, delta: float) -> void:
 		_trigger_overload(rng)
 
 func _trigger_overload(rng: RandomNumberGenerator) -> void:
-	# joint_lock: 50% chance to absorb the overload (consumed each use)
+	# joint_lock: 50% chance to absorb the overload — module is consumed on absorption
 	if _has_module("joint_lock") and rng.randf() < 0.5:
+		for mod in grid.get_all_modules():
+			if mod.id == "joint_lock" and not mod.disabled:
+				mod.disabled = true
+				joint_lock_absorbed.emit(mod)
+				break
 		return
 	var candidates := grid.get_all_modules().filter(
 		func(m: Module) -> bool: return not m.disabled

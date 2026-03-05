@@ -5,9 +5,9 @@ extends Control
 
 signal module_selected(mod: Module)
 
-const CARD_W: int = 210
+const CARD_W: int = 168
 const CARD_H: int = 150
-const GAP:    int = 14
+const GAP:    int = 10
 
 const RARITY_COLORS: Dictionary = {
 	Module.Rarity.COMMON:    Color("282828"),
@@ -17,9 +17,10 @@ const RARITY_COLORS: Dictionary = {
 	Module.Rarity.LEGENDARY: Color("5a1a00"),
 }
 
-var _selected_mod: Module  = null
-var _cards:        Array   = []   # Panel nodes
-var _offers:       Array[Module] = []
+var _selected_mod:  Module    = null
+var _cards:         Array     = []   # Panel nodes
+var _offers:        Array[Module] = []
+var _player_grid:   MechGrid  = null
 
 # ── Public API ──────────────────────────────────────────────────────────────
 
@@ -38,6 +39,19 @@ func show_offers(offers: Array[Module]) -> void:
 func get_selected() -> Module:
 	return _selected_mod
 
+func set_player_grid(grid: MechGrid) -> void:
+	_player_grid = grid
+
+func remove_offer(mod: Module) -> void:
+	var idx := _offers.find(mod)
+	if idx < 0:
+		return
+	_cards[idx].queue_free()
+	_cards.remove_at(idx)
+	_offers.remove_at(idx)
+	for i in range(_cards.size()):
+		_cards[i].position.x = float(i * (CARD_W + GAP))
+
 func deselect() -> void:
 	_selected_mod = null
 	_refresh_selection()
@@ -50,14 +64,29 @@ func _build_card(mod: Module, index: int) -> Panel:
 	card.size     = Vector2(float(CARD_W), float(CARD_H))
 	_apply_card_style(card, mod.rarity, false)
 
-	# Module name
+	# Module name (leave room for category badge on the right)
 	var name_lbl := Label.new()
 	name_lbl.position = Vector2(8.0, 8.0)
-	name_lbl.size     = Vector2(float(CARD_W - 16), 26.0)
+	name_lbl.size     = Vector2(float(CARD_W - 32), 26.0)
 	name_lbl.text     = mod.display_name
 	name_lbl.add_theme_font_size_override("font_size", 13)
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	card.add_child(name_lbl)
+
+	# Category badge (top-right corner)
+	var badge_color: Color = MechGridView.CATEGORY_COLORS.get(mod.category, Color("444444"))
+	var badge_bg := ColorRect.new()
+	badge_bg.position = Vector2(float(CARD_W - 18), 6.0)
+	badge_bg.size     = Vector2(12.0, 12.0)
+	badge_bg.color    = badge_color
+	card.add_child(badge_bg)
+	var badge_lbl := Label.new()
+	badge_lbl.position = Vector2(float(CARD_W - 18), 4.0)
+	badge_lbl.size     = Vector2(12.0, 14.0)
+	badge_lbl.text     = SynergySystem.category_icon(mod.category)
+	badge_lbl.add_theme_font_size_override("font_size", 8)
+	badge_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	card.add_child(badge_lbl)
 
 	# Category · Rarity
 	var meta_lbl := Label.new()
@@ -71,11 +100,24 @@ func _build_card(mod: Module, index: int) -> Panel:
 	# Stats
 	var stats_lbl := Label.new()
 	stats_lbl.position      = Vector2(8.0, 58.0)
-	stats_lbl.size          = Vector2(float(CARD_W - 16), 64.0)
+	stats_lbl.size          = Vector2(float(CARD_W - 16), 46.0)
 	stats_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stats_lbl.add_theme_font_size_override("font_size", 10)
 	stats_lbl.text = _stat_lines(mod)
 	card.add_child(stats_lbl)
+
+	# Synergy hint (if the player already has a matching category on grid)
+	if _player_grid != null:
+		var syns := SynergySystem.synergies_for(mod, _player_grid)
+		if not syns.is_empty():
+			var syn: Dictionary = syns[0]
+			var syn_lbl := Label.new()
+			syn_lbl.position = Vector2(8.0, float(CARD_H - 42))
+			syn_lbl.size     = Vector2(float(CARD_W - 16), 16.0)
+			syn_lbl.text     = "⬡ SYNERGY: %s" % syn["name"]
+			syn_lbl.add_theme_font_size_override("font_size", 9)
+			syn_lbl.add_theme_color_override("font_color", syn["color"])
+			card.add_child(syn_lbl)
 
 	# Cost (bottom-right)
 	var cost_lbl := Label.new()
