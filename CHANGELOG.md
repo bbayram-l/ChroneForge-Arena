@@ -6,6 +6,35 @@
 
 ---
 
+## [0.9.2] — Balance Pass v3 — 2026-03-06
+
+### Balance Changes
+Data-driven pass from session log analysis (TEMPORAL_ASSASSIN, 8 rounds).
+Root findings: heat/paradox activated 0 times; pre_fire_snapshot fired all weapons
+with one copy; enemy tier-2 had ★3 weapons at round 8; player ran out of gold.
+
+- **Pre-Fire Snapshot** — each copy now fires **exactly ONE weapon** (was: one
+  copy = all weapons fire). Hard cap prevents the opening volley from scaling
+  with grid size. Stacking 2 snapshots fires 2 weapons. 0.8× penalty unchanged.
+- **Temporal Paradox Pre-load** — raised **5 → 8 per TEMPORAL module**. A
+  2-Temporal build now starts at 16/100 PDX (was 10). Temporal downside is
+  felt even in 1–3 second fights.
+- **Weapon Heat Generation** — all 14 weapon modules ×1.5 heat_gen.
+  (`scatter_burst` 3→4.5 / `shard_cannon` 5→7.5 / `railgun` 20→30 /
+  `arc_lance` 20→30 / `siege_cannon` 35→52.5). Heat system was invisible in
+  play; higher generation makes quadrant thresholds reachable mid-fight.
+- **Reflective Field** — minimum **8 raw damage** required to reflect.
+  Scatter_burst pellets (5 base dmg) no longer spam 20+ trivial reflect events
+  per fight. Only meaningful shots trigger the reflect log and HP cost.
+- **Enemy Star Scaling** — tier 2 (rounds 8–11) capped at **★2 for all
+  modules** (was: ★3 weapons). Tier 3 (round 12+) gives weapon ★3, others ★2.
+  Round 8 enemy had 4× ★3 weapons vs a player with all ★1 modules — wall.
+- **Base Income** — raised **5 → 6 gold per round**. Players were hitting 0
+  gold before multiple rounds with 16 modules all at ★1; the extra gold
+  enables at least one upgrade cycle per typical run.
+
+---
+
 ## [0.9.1] — Balance Pass — 2026-03-06
 
 ### Temporal Stack Nerfs
