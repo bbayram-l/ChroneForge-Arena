@@ -5,9 +5,10 @@ extends Control
 
 signal module_selected(mod: Module)
 
-const CARD_W: int = 168
-const CARD_H: int = 150
-const GAP:    int = 10
+const CARD_W:   int = 160
+const CARD_H:   int = 164
+const GAP:      int = 8
+const IMAGE_H:  int = 56
 
 const RARITY_COLORS: Dictionary = {
 	Module.Rarity.COMMON:    Color("282828"),
@@ -64,16 +65,24 @@ func _build_card(mod: Module, index: int) -> Panel:
 	card.size     = Vector2(float(CARD_W), float(CARD_H))
 	_apply_card_style(card, mod.rarity, false)
 
-	# Module name (leave room for category badge on the right)
-	var name_lbl := Label.new()
-	name_lbl.position = Vector2(8.0, 8.0)
-	name_lbl.size     = Vector2(float(CARD_W - 32), 26.0)
-	name_lbl.text     = mod.display_name
-	name_lbl.add_theme_font_size_override("font_size", 13)
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	card.add_child(name_lbl)
+	# Image slot — loads res://assets/modules/{id}.png if available,
+	# otherwise shows a dim category-coloured placeholder.
+	var img_path := "res://assets/modules/%s.png" % mod.id
+	var img_bg := ColorRect.new()
+	img_bg.position = Vector2(6.0, 6.0)
+	img_bg.size     = Vector2(float(CARD_W - 12), float(IMAGE_H))
+	img_bg.color    = MechGridView.CATEGORY_COLORS.get(mod.category, Color("333333"))
+	img_bg.modulate.a = 0.25
+	card.add_child(img_bg)
+	if ResourceLoader.exists(img_path):
+		var img := TextureRect.new()
+		img.position     = img_bg.position
+		img.size         = img_bg.size
+		img.texture      = load(img_path)
+		img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		card.add_child(img)
 
-	# Category badge (top-right corner)
+	# Category badge (top-right, overlaid on image)
 	var badge_color: Color = MechGridView.CATEGORY_COLORS.get(mod.category, Color("444444"))
 	var badge_bg := ColorRect.new()
 	badge_bg.position = Vector2(float(CARD_W - 18), 6.0)
@@ -88,19 +97,28 @@ func _build_card(mod: Module, index: int) -> Panel:
 	badge_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	card.add_child(badge_lbl)
 
+	# Module name
+	var name_lbl := Label.new()
+	name_lbl.position      = Vector2(8.0, float(IMAGE_H + 10))
+	name_lbl.size          = Vector2(float(CARD_W - 16), 22.0)
+	name_lbl.text          = mod.display_name
+	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(name_lbl)
+
 	# Category · Rarity
 	var meta_lbl := Label.new()
-	meta_lbl.position = Vector2(8.0, 36.0)
-	meta_lbl.size     = Vector2(float(CARD_W - 16), 18.0)
+	meta_lbl.position = Vector2(8.0, float(IMAGE_H + 32))
+	meta_lbl.size     = Vector2(float(CARD_W - 16), 14.0)
 	meta_lbl.text     = "%s · %s" % [Module.Category.keys()[mod.category], Module.Rarity.keys()[mod.rarity]]
-	meta_lbl.add_theme_font_size_override("font_size", 10)
+	meta_lbl.add_theme_font_size_override("font_size", 9)
 	meta_lbl.modulate = Color(0.75, 0.75, 0.75)
 	card.add_child(meta_lbl)
 
 	# Stats
 	var stats_lbl := Label.new()
-	stats_lbl.position      = Vector2(8.0, 58.0)
-	stats_lbl.size          = Vector2(float(CARD_W - 16), 46.0)
+	stats_lbl.position      = Vector2(8.0, float(IMAGE_H + 48))
+	stats_lbl.size          = Vector2(float(CARD_W - 16), 34.0)
 	stats_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stats_lbl.add_theme_font_size_override("font_size", 10)
 	stats_lbl.text = _stat_lines(mod)
@@ -112,19 +130,19 @@ func _build_card(mod: Module, index: int) -> Panel:
 		if not syns.is_empty():
 			var syn: Dictionary = syns[0]
 			var syn_lbl := Label.new()
-			syn_lbl.position = Vector2(8.0, float(CARD_H - 42))
-			syn_lbl.size     = Vector2(float(CARD_W - 16), 16.0)
-			syn_lbl.text     = "⬡ SYNERGY: %s" % syn["name"]
+			syn_lbl.position = Vector2(8.0, float(CARD_H - 32))
+			syn_lbl.size     = Vector2(float(CARD_W - 16), 14.0)
+			syn_lbl.text     = "* SYNERGY: %s" % syn["name"]
 			syn_lbl.add_theme_font_size_override("font_size", 9)
 			syn_lbl.add_theme_color_override("font_color", syn["color"])
 			card.add_child(syn_lbl)
 
 	# Cost (bottom-right)
 	var cost_lbl := Label.new()
-	cost_lbl.position  = Vector2(float(CARD_W - 60), float(CARD_H - 24))
-	cost_lbl.size      = Vector2(52.0, 18.0)
+	cost_lbl.position  = Vector2(float(CARD_W - 58), float(CARD_H - 17))
+	cost_lbl.size      = Vector2(50.0, 15.0)
 	cost_lbl.text      = "%d scrap" % mod.cost
-	cost_lbl.add_theme_font_size_override("font_size", 11)
+	cost_lbl.add_theme_font_size_override("font_size", 10)
 	cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	card.add_child(cost_lbl)
 

@@ -930,6 +930,7 @@ func _build_archetype_card(arch: Dictionary, card_w: float) -> Panel:
 func _on_archetype_selected(archetype: String) -> void:
 	GameState.archetype = archetype
 	_archetype_panel.visible = false
+	hud_panel.set_archetype(archetype)
 	print("[Setup] Archetype chosen: %s" % archetype)
 
 	# Reset grids + shop for a fresh run
@@ -1237,13 +1238,17 @@ func _populate_results_panel(result: Dictionary) -> void:
 	var winner: String  = result.winner
 	var log:    Array   = result.get("event_log", [])
 
-	var p_dmg:      float = 0.0
-	var e_dmg:      float = 0.0
-	var p_shots:    int   = 0
-	var e_shots:    int   = 0
-	var p_disabled: int   = 0
-	var e_disabled: int   = 0
-	var events: Array[String] = []
+	var p_dmg:       float = 0.0
+	var e_dmg:       float = 0.0
+	var p_shots:     int   = 0
+	var e_shots:     int   = 0
+	var p_disabled:  int   = 0
+	var e_disabled:  int   = 0
+	var p_mod_dmg:   Dictionary     = {}
+	var e_mod_dmg:   Dictionary     = {}
+	var p_synergies: Array[String]  = []
+	var e_synergies: Array[String]  = []
+	var events:      Array[String]  = []
 
 	const HIGHLIGHT := ["dodge", "paradox_overload", "emp_lock", "reflect",
 		"rewind_shield", "capacitor_explosion", "overdrive_vent",
@@ -1254,9 +1259,20 @@ func _populate_results_panel(result: Dictionary) -> void:
 		var actor: String = entry.get("actor", "?")
 		var tick:  int    = entry.get("tick",  0)
 		if t == "shot":
-			var d: float = entry.get("damage", 0.0)
-			if actor == "player": p_dmg += d; p_shots += 1
-			else:                 e_dmg += d; e_shots += 1
+			var d:   float  = entry.get("damage", 0.0)
+			var mid: String = entry.get("module", "?")
+			if actor == "player":
+				p_dmg += d; p_shots += 1
+				p_mod_dmg[mid] = p_mod_dmg.get(mid, 0.0) + d
+			else:
+				e_dmg += d; e_shots += 1
+				e_mod_dmg[mid] = e_mod_dmg.get(mid, 0.0) + d
+		if t == "synergy_active":
+			var sname: String = entry.get("name", "?")
+			if actor == "player":
+				if sname not in p_synergies: p_synergies.append(sname)
+			else:
+				if sname not in e_synergies: e_synergies.append(sname)
 		if t in ["heat_disable", "paradox_overload"]:
 			if actor == "player": p_disabled += 1
 			else:                 e_disabled += 1
@@ -1264,11 +1280,11 @@ func _populate_results_panel(result: Dictionary) -> void:
 			match t:
 				"dodge":               events.append("t%d  %s dodged" % [tick, actor])
 				"paradox_overload":    events.append("t%d  %s OVERLOAD [%s]" % [tick, actor, entry.get("module", "?")])
-				"emp_lock":            events.append("t%d  %s EMP → %s" % [tick, actor, entry.get("module", "?")])
+				"emp_lock":            events.append("t%d  %s EMP -> %s" % [tick, actor, entry.get("module", "?")])
 				"reflect":             events.append("t%d  %s reflected %.0f" % [tick, actor, entry.get("reflected", 0.0)])
 				"rewind_shield":       events.append("t%d  %s REWIND SHIELD" % [tick, actor])
 				"capacitor_explosion": events.append("t%d  %s CAPACITOR BLAST" % [tick, actor])
-				"overdrive_vent":      events.append("t%d  %s VENT (−15 HP)" % [tick, actor])
+				"overdrive_vent":      events.append("t%d  %s VENT (-15 HP)" % [tick, actor])
 				"reactive_armor":      events.append("t%d  %s reactive armor" % [tick, actor])
 				"heat_disable":        events.append("t%d  %s heat-disabled [%s]" % [tick, actor, entry.get("module", "?")])
 
@@ -1291,11 +1307,16 @@ func _populate_results_panel(result: Dictionary) -> void:
 	sub.text = "Round %d%s  ·  %.1f seconds" % [
 		GameState.current_round - 1, timeout_tag, result.duration_seconds]
 
-	# Per-side stats
+	# Per-side stats with top-3 weapon breakdown
+	var p_syn_line := ("Synergies: " + ", ".join(p_synergies) + "\n") if not p_synergies.is_empty() else ""
+	var e_syn_line := ("Synergies: " + ", ".join(e_synergies) + "\n") if not e_synergies.is_empty() else ""
+
 	var p_lbl: Label = _results_panel.get_node("PlayerStats")
 	p_lbl.text = (
 		"PLAYER\n\n"
+		+ p_syn_line
 		+ "Damage:   %.0f  (%d shots)\n" % [p_dmg, p_shots]
+		+ _top_weapons(p_mod_dmg, 3)
 		+ "HP left:  %.1f\n" % result.player_hp_remaining
 		+ "Disabled: %d module%s" % [p_disabled, "s" if p_disabled != 1 else ""]
 	)
@@ -1303,7 +1324,9 @@ func _populate_results_panel(result: Dictionary) -> void:
 	var e_lbl: Label = _results_panel.get_node("EnemyStats")
 	e_lbl.text = (
 		"ENEMY\n\n"
+		+ e_syn_line
 		+ "Damage:   %.0f  (%d shots)\n" % [e_dmg, e_shots]
+		+ _top_weapons(e_mod_dmg, 3)
 		+ "HP left:  %.1f\n" % result.enemy_hp_remaining
 		+ "Disabled: %d module%s" % [e_disabled, "s" if e_disabled != 1 else ""]
 	)
@@ -1313,6 +1336,19 @@ func _populate_results_panel(result: Dictionary) -> void:
 	ev_lbl.text = "\n".join(events.slice(-8)) if not events.is_empty() else "— No notable events —"
 
 	_results_panel.visible = true
+
+
+func _top_weapons(mod_dmg: Dictionary, limit: int) -> String:
+	if mod_dmg.is_empty():
+		return ""
+	var pairs: Array = []
+	for k in mod_dmg.keys():
+		pairs.append([k, mod_dmg[k]])
+	pairs.sort_custom(func(a: Array, b: Array) -> bool: return a[1] > b[1])
+	var lines: PackedStringArray = []
+	for i in range(mini(limit, pairs.size())):
+		lines.append("  %-18s %.0f" % [pairs[i][0], pairs[i][1]])
+	return "\n".join(lines) + "\n"
 
 func _print_combat_summary(result: Dictionary) -> void:
 	var timeout_tag := " [TIMEOUT]" if result.ticks >= CombatEngine.MAX_TICKS else ""

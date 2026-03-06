@@ -179,6 +179,12 @@ func run_simulation() -> Dictionary:
 	_p_timeline_active = 1.5 if _has_module(player_grid, "timeline_split") else 0.0
 	_e_timeline_active = 1.5 if _has_module(enemy_grid,  "timeline_split") else 0.0
 
+	# Log active synergies at combat start (tick 0)
+	for syn: Dictionary in SynergySystem.active_synergies(player_grid):
+		_log("synergy_active", true,  {"name": syn["name"]})
+	for syn: Dictionary in SynergySystem.active_synergies(enemy_grid):
+		_log("synergy_active", false, {"name": syn["name"]})
+
 	while tick_count < MAX_TICKS and player_hp > 0.0 and enemy_hp > 0.0:
 		_tick()
 		tick_count += 1
@@ -611,6 +617,18 @@ func _on_module_disabled(mod: Module, is_player: bool) -> void:
 
 func _on_joint_lock_absorbed(mod: Module, is_player: bool) -> void:
 	_log("joint_lock", is_player, {"module": mod.id})
+	# Retaliation: EMP-lock one random active opponent module for 3 s
+	var opp_grid  := enemy_grid  if is_player else player_grid
+	var opp_locks := _e_emp_locks if is_player else _p_emp_locks
+	var candidates: Array[Module] = []
+	for m: Module in opp_grid.get_all_modules():
+		if not m.disabled and opp_locks.get(m.id, 0.0) <= 0.0:
+			candidates.append(m)
+	if not candidates.is_empty():
+		var target: Module = candidates[rng.randi() % candidates.size()]
+		opp_locks[target.id] = 3.0
+		target.disabled = true
+		_log("emp_lock", is_player, {"module": target.id})
 
 # ── Logging ────────────────────────────────────────────────────────────────
 

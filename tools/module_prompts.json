@@ -1,0 +1,257 @@
+[
+  {
+    "id": "light_frame",
+    "name": "Light Frame",
+    "prompt": "512x512 sci-fi mech module card art, lightweight titanium skeletal frame segment, angular struts and hollow lattice panels, grey metallic tone, cool blue-white edge lighting, dark space background, technical illustration style, no text, no UI"
+  },
+  {
+    "id": "reinforced_frame",
+    "name": "Reinforced Frame",
+    "prompt": "512x512 sci-fi mech module card art, heavily armored chassis block, thick layered steel plates with bolted reinforcements, muted grey-green coloring, faint amber stress-line glow at joints, dark industrial background, technical illustration, no text"
+  },
+  {
+    "id": "gyro_stabilizer",
+    "name": "Gyro Stabilizer",
+    "prompt": "512x512 sci-fi mech module card art, gyroscopic stabilizer unit, spinning concentric rings within a metallic housing, cool blue-white rotation glow, balanced symmetry, dark background, detailed mechanical illustration, no text"
+  },
+  {
+    "id": "shock_bracing",
+    "name": "Shock Bracing",
+    "prompt": "512x512 sci-fi mech module card art, impact shock absorber brace, hydraulic pistons and coiled dampeners, grey and black coloring, subtle yellow compression highlight, dark industrial background, mechanical illustration, no text"
+  },
+  {
+    "id": "joint_lock",
+    "name": "Joint Lock",
+    "prompt": "512x512 sci-fi mech module card art, mechanical joint lock mechanism, interlocking clamp teeth and reinforced pivot housing, dark steel construction, faint heat-orange glow along seams, black background, technical illustration, no text"
+  },
+  {
+    "id": "carbon_weave",
+    "name": "Carbon Weave",
+    "prompt": "512x512 sci-fi mech module card art, ultra-thin carbon fiber weave panel, hexagonal lattice pattern with metallic sheen, deep charcoal and silver tones, subtle blue-violet iridescence, black background, sleek technical illustration, no text"
+  },
+  {
+    "id": "armored_chassis",
+    "name": "Armored Chassis",
+    "prompt": "512x512 sci-fi mech module card art, battle-hardened armor chassis block, thick interlocking plate segments with battle scarring, dark iron-grey coloring, warm amber edge light, imposing and heavy design, dark background, detailed illustration, no text"
+  },
+  {
+    "id": "blast_plating",
+    "name": "Blast Plating",
+    "prompt": "512x512 sci-fi mech module card art, blast-resistant thermal plating panel, ceramic composite tiles on a metal backing, heat-scored surface with orange fade at edges, grey-brown coloring, dark industrial background, technical illustration, no text"
+  },
+  {
+    "id": "reactor_core",
+    "name": "Reactor Core",
+    "prompt": "512x512 sci-fi mech module card art, primary fusion reactor core unit, glowing cylindrical chamber with energy conduits, intense warm amber-orange radiance, metallic housing with vent slots, dark background, dramatic power illustration, no text"
+  },
+  {
+    "id": "micro_reactor",
+    "name": "Micro Reactor",
+    "prompt": "512x512 sci-fi mech module card art, compact micro fusion cell, small unstable glowing core inside a wire-mesh cage, flickering yellow-white light, cheap industrial casing, dark background, technical illustration style, no text"
+  },
+  {
+    "id": "capacitor_bank",
+    "name": "Capacitor Bank",
+    "prompt": "512x512 sci-fi mech module card art, high-voltage capacitor bank array, rows of cylindrical energy cells with glowing discharge ports, electric blue-yellow arcing between terminals, dark background, dramatic energy illustration, no text"
+  },
+  {
+    "id": "power_router",
+    "name": "Power Router",
+    "prompt": "512x512 sci-fi mech module card art, energy distribution routing hub, central node with glowing conduit cables radiating outward, warm golden-yellow power flow, symmetrical circuit-board aesthetic, dark background, technical illustration, no text"
+  },
+  {
+    "id": "fusion_core",
+    "name": "Fusion Core",
+    "prompt": "512x512 sci-fi mech module card art, high-output fusion reactor block, large toroidal magnetic containment ring with blazing plasma center, intense white-gold radiance, heavy metallic housing, dark background, dramatic sci-fi illustration, no text"
+  },
+  {
+    "id": "solar_tap",
+    "name": "Solar Tap",
+    "prompt": "512x512 sci-fi mech module card art, compact solar energy collector, unfolded photovoltaic array panels with iridescent blue-gold cells, passive clean design, space background, cool sunlit illustration style, no text"
+  },
+  {
+    "id": "overcharge_cell",
+    "name": "Overcharge Cell",
+    "prompt": "512x512 sci-fi mech module card art, dangerously overclocked power cell, cracked casing leaking purple-gold temporal energy, overloaded circuit traces burning orange, unstable crackling aura, dark background, dramatic glitch-art illustration, no text"
+  },
+  {
+    "id": "pulse_cannon",
+    "name": "Pulse Cannon",
+    "prompt": "512x512 sci-fi mech module card art, compact energy pulse cannon barrel, cylindrical emitter with charged blue-white plasma ring at muzzle, sleek metallic body, red targeting dot, dark background, clean sci-fi weapon illustration, no text"
+  },
+  {
+    "id": "railgun",
+    "name": "Railgun",
+    "prompt": "512x512 sci-fi mech module card art, electromagnetic railgun barrel assembly, two parallel rails with electric blue discharge streaks, massive coil accelerators, wisps of smoke, dark background, imposing kinetic weapon illustration, no text"
+  },
+  {
+    "id": "plasma_saw",
+    "name": "Plasma Saw",
+    "prompt": "512x512 sci-fi mech module card art, rotating plasma cutting saw blade, circular disc of superheated orange-white plasma, heat distortion halo, compact heavy housing, extreme heat glow, dark background, intense sci-fi weapon illustration, no text"
+  },
+  {
+    "id": "missile_pod",
+    "name": "Missile Pod",
+    "prompt": "512x512 sci-fi mech module card art, triple-tube missile pod launcher, three cylindrical launch tubes with readied warheads visible, exhaust scorch marks, dark military grey with red warning markings, dark background, detailed ordnance illustration, no text"
+  },
+  {
+    "id": "shard_cannon",
+    "name": "Shard Cannon",
+    "prompt": "512x512 sci-fi mech module card art, shard scatter cannon, wide-mouthed barrel filled with crystalline fragments, explosive burst pattern of shards erupting from the muzzle, silver-blue shards catching light, dark background, dynamic weapon illustration, no text"
+  },
+  {
+    "id": "gravity_mine",
+    "name": "Gravity Mine",
+    "prompt": "512x512 sci-fi mech module card art, deployable gravity mine device, spherical dark matter containment orb surrounded by gravitational lensing distortion rings, purple-black void hue, dark background, eerie sci-fi illustration, no text"
+  },
+  {
+    "id": "emp_burst",
+    "name": "EMP Burst",
+    "prompt": "512x512 sci-fi mech module card art, EMP emitter array, circular antenna dish with concentric electromagnetic shockwave rings radiating outward, electric blue-white pulse, dark background, clean energy weapon illustration, no text"
+  },
+  {
+    "id": "echo_cannon",
+    "name": "Echo Cannon",
+    "prompt": "512x512 sci-fi mech module card art, temporal echo cannon, layered parallel barrels with time-ghost afterimage trails, purple-violet temporal shimmer, ghostly duplicate of the barrel fading in and out, dark background, surreal weapon illustration, no text"
+  },
+  {
+    "id": "scatter_burst",
+    "name": "Scatter Burst",
+    "prompt": "512x512 sci-fi mech module card art, rapid-fire scatter gun, short wide barrel with spinning cylinder, cloud of tiny glowing pellets spraying outward, orange-red muzzle flash, compact design, dark background, dynamic weapon illustration, no text"
+  },
+  {
+    "id": "twin_blaster",
+    "name": "Twin Blaster",
+    "prompt": "512x512 sci-fi mech module card art, dual-barrel energy blaster, two parallel energy emitters firing synchronized blue-white bolts, balanced symmetrical housing, steady power glow, dark background, clean sci-fi weapon illustration, no text"
+  },
+  {
+    "id": "arc_lance",
+    "name": "Arc Lance",
+    "prompt": "512x512 sci-fi mech module card art, electromagnetic arc lance, long slender barrel with crackling blue-white lightning discharge at tip, zero-recoil magnetic coil housing, arcing energy tendrils, dark background, electric weapon illustration, no text"
+  },
+  {
+    "id": "siege_cannon",
+    "name": "Siege Cannon",
+    "prompt": "512x512 sci-fi mech module card art, massive 2x2 siege cannon, enormous thick barrel with glowing orange-red heat core, reinforced blast shield mounting, shockwave distortion at muzzle, imposing and heavy, dark background, epic weapon illustration, no text"
+  },
+  {
+    "id": "auto_turret",
+    "name": "Auto Turret",
+    "prompt": "512x512 sci-fi mech module card art, automated minigun turret, rotating multi-barrel Gatling assembly with a glowing tracking sensor eye, continuous stream of small energy rounds, dark military housing, dark background, technical weapon illustration, no text"
+  },
+  {
+    "id": "void_spike",
+    "name": "Void Spike",
+    "prompt": "512x512 sci-fi mech module card art, void spike launcher, crystalline black spike projectile charged with dark purple void energy, single heavy barrel with jagged crystal formation at tip, dark background, ominous weapon illustration, no text"
+  },
+  {
+    "id": "kinetic_plating",
+    "name": "Kinetic Plating",
+    "prompt": "512x512 sci-fi mech module card art, kinetic armor plating slab, thick flat metal plate with honeycomb impact dispersion texture, dark steel-grey coloring, subtle blue sheen on surface, dark background, straightforward armor illustration, no text"
+  },
+  {
+    "id": "reactive_armor",
+    "name": "Reactive Armor",
+    "prompt": "512x512 sci-fi mech module card art, reactive explosive armor tile, angled metal block with explosive reactive layer visible at edges, trigger wires and pressure sensors, dark olive-grey coloring, orange activation glow, dark background, technical illustration, no text"
+  },
+  {
+    "id": "energy_shield",
+    "name": "Energy Shield",
+    "prompt": "512x512 sci-fi mech module card art, rechargeable energy shield emitter, flat hexagonal emitter plate generating a translucent blue force field dome, clean energy lines, cool blue glow, dark background, defensive sci-fi illustration, no text"
+  },
+  {
+    "id": "reflective_field",
+    "name": "Reflective Field",
+    "prompt": "512x512 sci-fi mech module card art, reflective energy field projector, mirrored curved panel with visible projectile being bounced back, iridescent silver-blue sheen, incoming bolt visible reflecting at angle, dark background, defensive illustration, no text"
+  },
+  {
+    "id": "temporal_barrier",
+    "name": "Temporal Barrier",
+    "prompt": "512x512 sci-fi mech module card art, temporal barrier generator, circular ring emitter projecting a shimmering time-distortion dome, purple and silver temporal warp effect, fragmented time echoes visible in the field, dark background, eerie illustration, no text"
+  },
+  {
+    "id": "ablative_plating",
+    "name": "Ablative Plating",
+    "prompt": "512x512 sci-fi mech module card art, expendable ablative armor panel, thin sacrificial metal plate with surface erosion and blast scoring, light grey with charred damage marks, simple utilitarian design, dark background, technical illustration, no text"
+  },
+  {
+    "id": "dampening_shell",
+    "name": "Dampening Shell",
+    "prompt": "512x512 sci-fi mech module card art, layered dampening shell armor, multiple alternating dense and foam-like alloy layers cross-section visible, dark blue-grey coloring, subtle thermal dissipation glow lines, dark background, cross-section illustration, no text"
+  },
+  {
+    "id": "fortress_shell",
+    "name": "Fortress Shell",
+    "prompt": "512x512 sci-fi mech module card art, fortress-grade 2x1 energy barrier, massive wall-like shield emitter with twin anchor struts, enormous blue hexagonal barrier field projected, imposing heavy defense design, dark background, epic defensive illustration, no text"
+  },
+  {
+    "id": "heat_sink",
+    "name": "Heat Sink",
+    "prompt": "512x512 sci-fi mech module card art, passive heat sink array, dense aluminum fin radiator block with thermal pipes, heat shimmer rising from top, muted orange-red heat glow fading to grey, dark background, technical thermal illustration, no text"
+  },
+  {
+    "id": "radiator_loop",
+    "name": "Radiator Loop",
+    "prompt": "512x512 sci-fi mech module card art, high-throughput radiator loop unit, coiled heat pipe loops and large vented fin arrays, bright orange thermal glow at the pipe core fading outward, dark background, detailed heat management illustration, no text"
+  },
+  {
+    "id": "liquid_coolant",
+    "name": "Liquid Coolant Loop",
+    "prompt": "512x512 sci-fi mech module card art, liquid coolant loop module, transparent tubing filled with glowing cyan coolant fluid flowing through a compact pump unit, icy blue-green glow, frost on metal fittings, dark background, clean technical illustration, no text"
+  },
+  {
+    "id": "overdrive_vent",
+    "name": "Overdrive Vent",
+    "prompt": "512x512 sci-fi mech module card art, overdrive emergency heat vent, industrial blast vent panel erupting with a massive plume of superheated orange plasma and steam, riveted heavy housing, dramatic activation moment, dark background, dynamic illustration, no text"
+  },
+  {
+    "id": "thermal_wick",
+    "name": "Thermal Wick",
+    "prompt": "512x512 sci-fi mech module card art, passive thermal wick conductor, thin rod of heat-wicking material with visible heat color gradient from red-orange at base to cool grey at tip, simple utilitarian design, dark background, clean technical illustration, no text"
+  },
+  {
+    "id": "phase_cooler",
+    "name": "Phase Cooler",
+    "prompt": "512x512 sci-fi mech module card art, phase-change coolant module, sealed canister of phase-shift material with condensation forming on the exterior, frost-white and silver coloring, cool teal glow at outlet, dark background, clean thermal illustration, no text"
+  },
+  {
+    "id": "cryo_injector",
+    "name": "Cryo Injector",
+    "prompt": "512x512 sci-fi mech module card art, high-pressure cryo injector unit, industrial nozzle assembly firing a burst of icy blue cryo fluid, frost crystals forming on housing, intense cold-blue energy, dark background, dramatic cooling illustration, no text"
+  },
+  {
+    "id": "rewind_shield",
+    "name": "Rewind Shield",
+    "prompt": "512x512 sci-fi mech module card art, temporal rewind shield emitter, layered shield disk with a time-rewind ghost echo of itself slightly offset behind, purple-silver temporal shimmer, backward-flowing energy particles, dark background, surreal illustration, no text"
+  },
+  {
+    "id": "future_sight",
+    "name": "Future Sight",
+    "prompt": "512x512 sci-fi mech module card art, future sight sensor array, sleek circular sensor lens with a holographic projection showing a few seconds ahead in time, triple ghost images stacked in sequence, purple-teal glow, dark background, clean sci-fi illustration, no text"
+  },
+  {
+    "id": "pre_fire_snapshot",
+    "name": "Pre-Fire Snapshot",
+    "prompt": "512x512 sci-fi mech module card art, temporal pre-fire snapshot trigger, small device with a glowing weapon silhouette frozen in time, temporal energy burst radiating outward at the moment of trigger, purple-white flash, dark background, dynamic illustration, no text"
+  },
+  {
+    "id": "timeline_split",
+    "name": "Timeline Split",
+    "prompt": "512x512 sci-fi mech module card art, timeline split core 2x1 module, large temporal fork device showing two branching timeline streams diverging from a central nexus point, vivid purple and gold energy flows, chaotic temporal distortion, dark background, epic illustration, no text"
+  },
+  {
+    "id": "entropy_field",
+    "name": "Entropy Field",
+    "prompt": "512x512 sci-fi mech module card art, entropy field generator, swirling distortion field emitter with chaotic static-noise patterns and randomized data fragments cascading from center, dark purple entropy hue, unsettling design, dark background, eerie illustration, no text"
+  },
+  {
+    "id": "paradox_reactor",
+    "name": "Paradox Reactor",
+    "prompt": "512x512 sci-fi mech module card art, paradox reactor 2x2 core, enormous temporal power reactor with unstable paradox loops visible inside containment — overlapping time echoes and golden rings of paradox energy, immense scale, dark background, legendary illustration, no text"
+  },
+  {
+    "id": "stasis_matrix",
+    "name": "Stasis Matrix",
+    "prompt": "512x512 sci-fi mech module card art, stasis matrix field generator, flat emitter plate projecting a crystalline temporal stasis bubble, time frozen inside the field — a visible incoming projectile suspended mid-flight, purple-silver freeze tones, dark background, detailed illustration, no text"
+  }
+]

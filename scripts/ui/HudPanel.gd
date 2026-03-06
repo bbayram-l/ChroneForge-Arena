@@ -27,6 +27,7 @@ var _quad_fills:  Array = []   # 4 × ColorRect  (TL, TR, BL, BR)
 var _quad_lbls:   Array = []   # 4 × Label
 var _pdx2_fill:   ColorRect
 var _pdx2_lbl:    Label
+var _arch_lbl:    Label
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -171,10 +172,30 @@ func _build() -> void:
 	_pdx2_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	add_child(_pdx2_lbl)
 
-	var total_h: int = y_pdx2 + MINI_ROW_H + 2
+	# Archetype passive label
+	var y_arch: int = y_pdx2 + MINI_ROW_H + 4
+	_arch_lbl = Label.new()
+	_arch_lbl.position = Vector2(0.0, float(y_arch))
+	_arch_lbl.size     = Vector2(404.0, float(MINI_ROW_H))
+	_arch_lbl.add_theme_font_size_override("font_size", 9)
+	_arch_lbl.modulate = Color(0.9, 0.75, 0.4)
+	add_child(_arch_lbl)
+
+	var total_h: int = y_arch + MINI_ROW_H + 2
 	custom_minimum_size = Vector2(404.0, float(total_h))
 
 # ── Public API ──────────────────────────────────────────────────────────────
+
+const ARCHETYPE_PASSIVES: Dictionary = {
+	"RECOIL_BERSERKER":    "PASSIVE: +25% weapon dmg; double recoil per shot",
+	"THERMAL_OVERDRIVE":   "PASSIVE: +25% dmg while quadrant heat >= 50",
+	"TEMPORAL_ASSASSIN":   "PASSIVE: Temporal weapons fire 15% faster",
+	"FORTRESS_STABILIZER": "PASSIVE: Shields start 25% higher; gyro torque halved",
+	"PARADOX_GAMBLER":     "PASSIVE: +30% dmg when paradox > 80",
+}
+
+func set_archetype(arch: String) -> void:
+	_arch_lbl.text = ARCHETYPE_PASSIVES.get(arch, "")
 
 func refresh(grid: MechGrid) -> void:
 	var power_sys   := PowerSystem.new(grid)
