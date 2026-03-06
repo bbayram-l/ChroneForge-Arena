@@ -1,7 +1,3 @@
-[color=#e8941f][b]Unreleased[/b][/color]
-
-
-
 [color=#e8941f][b]0.9.2 — Balance Pass v3 — 2026-03-06[/b][/color]
 
 [color=#ffdd88]Balance Changes[/color]
@@ -28,3 +24,34 @@ with one copy; enemy tier-2 had ★3 weapons at round 8; player ran out of gold.
 • [b]Base Income[/b] — raised [b]5 → 6 gold per round[/b]. Players were hitting 0
   gold before multiple rounds with 16 modules all at ★1; the extra gold
   enables at least one upgrade cycle per typical run.
+
+
+
+[color=#e8941f][b]0.9.1 — Balance Pass — 2026-03-06[/b][/color]
+
+[color=#ffdd88]Temporal Stack Nerfs[/color]
+The Temporal archetype was ending fights in 0–3 ticks, bypassing heat, paradox, and
+torque systems entirely. These changes keep Temporal builds viable while ensuring the
+five combat systems stay visible throughout a fight.
+
+• [b]Pre-Fire Snapshot[/b] — shots now deal [b]0.8× damage[/b] (snapshot penalty: unguided
+  opening volley fires before targeting lock). Temporal builds no longer instant-kill
+  late-game enemies on the opening volley.
+• [b]Pre-Fire Snapshot + Timeline Split[/b] — pre-fire no longer benefits from the Timeline
+  Split 2× window. They are distinct mechanics; Timeline Split now applies only to the
+  main combat loop.
+• [b]Timeline Split[/b] — active damage multiplier reduced [b]2.0× → 1.5×[/b]. Still a
+  powerful opening window; no longer near-instant-kill on its own.
+• [b]Entropy Field[/b] — debuff floor raised [b]0.3× → 0.5×[/b] (opponent weapons can now be
+  suppressed by at most 50%, not 70%). Tick interval slowed [b]1.0s → 1.5s[/b] so the
+  ramp-up takes longer and only dominates in extended fights.
+• [b]Temporal Paradox Pre-load[/b] — combat now starts with [b]5 × temporal_module_count[/b]
+  paradox. A 6-Temporal build begins at 30/100 threshold; the meta tax and overload
+  risk apply from tick 1 instead of being irrelevant in short fights.
+
+[color=#ffdd88]Bug Fixes[/color]
+• [b]joint_lock[/b] now correctly [b]consumes itself[/b] (disables) when it absorbs a paradox
+  overload. Previously it could absorb unlimited overloads for free.
+
+[color=#ffdd88]Synergy Bonuses (now combat-active)[/color]
+All six synergies were display-only; they are now wired into the combat simulation:

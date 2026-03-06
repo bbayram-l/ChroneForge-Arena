@@ -25,8 +25,13 @@ def md_to_bbcode(md_text: str, max_sections: int = 2) -> str:
     """Convert the N most recent ## sections of CHANGELOG.md to BBCode."""
 
     # Split on version headers (## [...])
+    # Skip empty sections (e.g. [Unreleased] with no bullets) so they don't
+    # consume one of the max_sections slots.
     raw_sections = re.split(r"\n(?=## )", md_text.strip())
-    version_sections = [s for s in raw_sections if s.startswith("## ")][:max_sections]
+    version_sections = [
+        s for s in raw_sections
+        if s.startswith("## ") and re.search(r"^[-*] ", s, re.MULTILINE)
+    ][:max_sections]
 
     out: list[str] = []
 
