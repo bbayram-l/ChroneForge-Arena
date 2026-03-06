@@ -102,8 +102,8 @@ func _build_card(mod: Module, index: int) -> Panel:
 	var img_path := "res://assets/modules/%s.png" % mod.id
 	if ResourceLoader.exists(img_path):
 		var img := TextureRect.new()
-		img.position     = img_bg.position
-		img.size         = img_bg.size
+		img.position     = Vector2(6.0, 6.0)
+		img.size         = Vector2(float(CARD_W - 12), float(IMAGE_H))
 		img.texture      = load(img_path)
 		img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		img.mouse_filter = MOUSE_FILTER_IGNORE
