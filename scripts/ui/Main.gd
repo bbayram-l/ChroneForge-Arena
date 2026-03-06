@@ -19,6 +19,7 @@ var shop:        ShopSystem
 var engine:      CombatEngine
 
 # UI nodes
+var _canvas:          CanvasLayer
 var player_grid_view: MechGridView
 var enemy_grid_view:  MechGridView
 var shop_panel:       ShopPanel
@@ -39,6 +40,11 @@ var _sell_mode:       bool   = false
 var _upgrade_mode:    bool   = false
 var _protected_cells: Array[Vector2i] = []
 
+# ── Drag state ──────────────────────────────────────────────────────────────
+var _drag_mod:       Module = null
+var _drag_ghost:     Panel  = null
+var _drag_last_cell: Vector2i = Vector2i(-1, -1)
+
 # ── Replay state ────────────────────────────────────────────────────────────
 var _last_result:           Dictionary = {}
 var _replay_timer:          Timer
@@ -58,8 +64,9 @@ func _ready() -> void:
 	_archetype_panel.visible = true
 
 func _setup_ui() -> void:
-	var canvas := CanvasLayer.new()
-	add_child(canvas)
+	_canvas = CanvasLayer.new()
+	add_child(_canvas)
+	var canvas: CanvasLayer = _canvas
 
 	# Status bar
 	_status_label = Label.new()
@@ -127,6 +134,9 @@ func _setup_ui() -> void:
 	shop_panel.position = Vector2(22.0, 640.0)
 	canvas.add_child(shop_panel)
 	shop_panel.module_selected.connect(_on_module_selected)
+	shop_panel.drag_started.connect(_on_shop_drag_started)
+	shop_panel.drag_dropped.connect(_on_shop_drag_dropped)
+	GameState.gold_changed.connect(func(_g: int) -> void: shop_panel.refresh_affordability())
 
 	# Run-over overlay (hidden until run ends)
 	_run_over_panel = _build_run_over_panel()
@@ -1233,6 +1243,117 @@ func _update_status(suffix: String = "") -> void:
 	if suffix:
 		text += "  |  " + suffix
 	_status_label.text = text
+
+# ── Drag-and-drop ────────────────────────────────────────────────────────────
+
+func _process(_delta: float) -> void:
+	if _drag_mod == null or _drag_ghost == null:
+		return
+	var mouse := get_viewport().get_mouse_position()
+	_drag_ghost.position = mouse + Vector2(14.0, 14.0)
+
+	var cell := _screen_to_grid_cell(mouse, player_grid_view)
+	if cell.x >= 0:
+		var gs   := _drag_mod.grid_size
+		var ox   := clamp(cell.x - gs.x / 2, 0, MechGrid.GRID_WIDTH  - gs.x)
+		var oy   := clamp(cell.y - gs.y / 2, 0, MechGrid.GRID_HEIGHT - gs.y)
+		var origin := Vector2i(ox, oy)
+		if origin != _drag_last_cell:
+			_drag_last_cell = origin
+			player_grid_view.show_drag_footprint(origin, _drag_mod)
+	else:
+		if _drag_last_cell.x >= 0:
+			_drag_last_cell = Vector2i(-1, -1)
+			player_grid_view.clear_drag_footprint()
+
+
+func _input(event: InputEvent) -> void:
+	if _drag_mod != null and event is InputEventKey:
+		var ke := event as InputEventKey
+		if ke.pressed and ke.keycode == KEY_ESCAPE:
+			_clear_drag()
+			shop_panel.deselect()
+			player_grid_view.clear_highlights()
+
+
+func _on_shop_drag_started(mod: Module) -> void:
+	_drag_mod       = mod
+	_selected_offer = null
+	player_grid_view.clear_highlights()
+
+	var cat_col := MechGridView.CATEGORY_COLORS.get(mod.category, Color("333333"))
+	_drag_ghost      = Panel.new()
+	_drag_ghost.size = Vector2(110.0, 38.0)
+	_drag_ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = cat_col.darkened(0.45)
+	style.set_corner_radius_all(6)
+	style.border_color        = cat_col.lightened(0.2)
+	style.border_width_left   = 2
+	style.border_width_right  = 2
+	style.border_width_top    = 2
+	style.border_width_bottom = 2
+	_drag_ghost.add_theme_stylebox_override("panel", style)
+
+	var lbl := Label.new()
+	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	lbl.text                 = mod.display_name
+	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.mouse_filter         = Control.MOUSE_FILTER_IGNORE
+	_drag_ghost.add_child(lbl)
+
+	_canvas.add_child(_drag_ghost)
+
+
+func _on_shop_drag_dropped(mod: Module, screen_pos: Vector2) -> void:
+	_clear_drag()
+	if phase != Phase.SHOP_PHASE:
+		return
+	var cell := _screen_to_grid_cell(screen_pos, player_grid_view)
+	if cell.x < 0:
+		return
+	var gs     := mod.grid_size
+	var ox     := clamp(cell.x - gs.x / 2, 0, MechGrid.GRID_WIDTH  - gs.x)
+	var oy     := clamp(cell.y - gs.y / 2, 0, MechGrid.GRID_HEIGHT - gs.y)
+	var origin := Vector2i(ox, oy)
+	if GameState.gold < mod.cost:
+		print("[Shop] Not enough gold (need %d, have %d)" % [mod.cost, GameState.gold])
+		return
+	if not player_grid.can_place(origin, mod):
+		return
+	if GameState.spend_gold(mod.cost):
+		player_grid.place_module(origin, mod)
+		player_grid_view.refresh(player_grid)
+		hud_panel.refresh(player_grid)
+		_update_status()
+		print("[Shop] Dragged: %s at (%d,%d)" % [mod.display_name, origin.x, origin.y])
+		shop_panel.remove_offer(mod)
+		shop_panel.deselect()
+
+
+func _clear_drag() -> void:
+	_drag_mod       = null
+	_drag_last_cell = Vector2i(-1, -1)
+	if _drag_ghost != null:
+		_drag_ghost.queue_free()
+		_drag_ghost = null
+	player_grid_view.clear_drag_footprint()
+
+
+## Convert a screen position to a grid cell on `grid_view`.
+## Returns Vector2i(-1,-1) if outside the grid bounds.
+func _screen_to_grid_cell(screen_pos: Vector2, grid_view: MechGridView) -> Vector2i:
+	var local := screen_pos - grid_view.global_position
+	var step  := float(MechGridView.CELL_SIZE + MechGridView.CELL_GAP)
+	var cx    := int(local.x / step)
+	var cy    := int(local.y / step)
+	if cx < 0 or cx >= MechGrid.GRID_WIDTH or cy < 0 or cy >= MechGrid.GRID_HEIGHT:
+		return Vector2i(-1, -1)
+	return Vector2i(cx, cy)
+
 
 func _populate_results_panel(result: Dictionary) -> void:
 	var winner: String  = result.winner

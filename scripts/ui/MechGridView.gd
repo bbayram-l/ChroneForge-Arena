@@ -21,9 +21,11 @@ const CATEGORY_COLORS: Dictionary = {
 	Module.Category.TEMPORAL:   Color("7030b0"),
 	Module.Category.AI:         Color("10b090"),
 }
-const EMPTY_COLOR     := Color("1e1e22")
-const HIGHLIGHT_COLOR := Color("2a5a2a")   # valid placement cell
-const HOVER_COLOR     := Color("4a9a20")   # hovered valid cell
+const EMPTY_COLOR          := Color("1e1e22")
+const HIGHLIGHT_COLOR      := Color("2a5a2a")   # valid placement cell
+const HOVER_COLOR          := Color("4a9a20")   # hovered valid cell
+const FOOTPRINT_VALID_COL  := Color(0.20, 0.85, 0.25, 0.80)   # green — can drop here
+const FOOTPRINT_INVALID_COL := Color(0.85, 0.15, 0.10, 0.80)  # red   — cannot drop
 
 var _panels:       Array     = []            # [y][x] → Panel
 var _title_label:  Label
@@ -32,6 +34,8 @@ var _highlighted:  Array     = []            # Array[Vector2i] valid-placement p
 var _hovered_pos:  Vector2i  = Vector2i(-1, -1)
 var _com:          Vector2   = Vector2(3.0, 3.0)   # center-of-mass in grid coords
 var _show_com:     bool      = false
+var _fp_cells:     Array     = []            # Array[Vector2i] drag-footprint cells
+var _fp_valid:     bool      = false
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -117,6 +121,30 @@ func clear_highlights() -> void:
 	if _current_grid:
 		refresh(_current_grid)
 
+## Highlight the multi-cell footprint of `module` with origin at `origin`.
+## Green if placement is valid, red if not.
+func show_drag_footprint(origin: Vector2i, module: Module) -> void:
+	var new_cells: Array = []
+	for dy in range(module.grid_size.y):
+		for dx in range(module.grid_size.x):
+			new_cells.append(origin + Vector2i(dx, dy))
+	var new_valid := _current_grid != null and _current_grid.can_place(origin, module)
+	if new_cells == _fp_cells and new_valid == _fp_valid:
+		return
+	_fp_cells = new_cells
+	_fp_valid  = new_valid
+	for y in range(MechGrid.GRID_HEIGHT):
+		for x in range(MechGrid.GRID_WIDTH):
+			_redraw_cell(Vector2i(x, y))
+
+## Clear the drag footprint and restore normal cell colours.
+func clear_drag_footprint() -> void:
+	if _fp_cells.is_empty():
+		return
+	_fp_cells = []
+	if _current_grid:
+		refresh(_current_grid)
+
 # ── Torque visualizer ───────────────────────────────────────────────────────
 
 func _draw() -> void:
@@ -169,7 +197,9 @@ func _redraw_cell(pos: Vector2i) -> void:
 		base = base.darkened(0.65)
 
 	var final_color := base
-	if _highlighted.has(pos):
+	if _fp_cells.has(pos):
+		final_color = FOOTPRINT_VALID_COL if _fp_valid else FOOTPRINT_INVALID_COL
+	elif _highlighted.has(pos):
 		if cell.is_empty():
 			final_color = HOVER_COLOR if pos == _hovered_pos else HIGHLIGHT_COLOR
 		else:
