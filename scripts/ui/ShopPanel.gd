@@ -26,7 +26,7 @@ var _cards:         Array             = []
 var _offers:        Array[Module]     = []
 var _player_grid:   MechGrid          = null
 var _cost_labels:   Dictionary        = {}   # Module → Label
-var _hover_idx:     int               = -1
+var _hover_mod:     Module            = null
 
 # Drag / click state
 var _pressed_mod:      Module  = null
@@ -41,7 +41,7 @@ func show_offers(offers: Array[Module]) -> void:
 	_cards.clear()
 	_offers = offers.duplicate()
 	_cost_labels.clear()
-	_hover_idx    = -1
+	_hover_mod    = null
 	_selected_mod = null
 	for i in range(offers.size()):
 		var card := _build_card(offers[i], i)
@@ -62,6 +62,8 @@ func remove_offer(mod: Module) -> void:
 	_cards[idx].queue_free()
 	_cards.remove_at(idx)
 	_offers.remove_at(idx)
+	if _hover_mod == mod:
+		_hover_mod = null
 	# Cards keep their original slot x-positions so remaining slots are predictable.
 	# Do NOT reposition — gaps appear but click coordinates stay stable.
 
@@ -190,8 +192,8 @@ func _build_card(mod: Module, index: int) -> Panel:
 
 	# ── Signals ──────────────────────────────────────────────────────────────
 	card.gui_input.connect(_on_card_gui_input.bind(mod))
-	card.mouse_entered.connect(_on_card_hover_enter.bind(index))
-	card.mouse_exited.connect(_on_card_hover_exit.bind(index))
+	card.mouse_entered.connect(_on_card_hover_enter.bind(mod))
+	card.mouse_exited.connect(_on_card_hover_exit.bind(mod))
 	return card
 
 
@@ -269,18 +271,20 @@ func _input(event: InputEvent) -> void:
 
 # ── Hover effects ────────────────────────────────────────────────────────────
 
-func _on_card_hover_enter(idx: int) -> void:
-	_hover_idx = idx
-	if idx < _cards.size():
-		_apply_card_style(_cards[idx], _offers[idx].rarity, _offers[idx] == _selected_mod, true)
+func _on_card_hover_enter(mod: Module) -> void:
+	_hover_mod = mod
+	var idx := _offers.find(mod)
+	if idx >= 0 and idx < _cards.size():
+		_apply_card_style(_cards[idx], mod.rarity, mod == _selected_mod, true)
 
-func _on_card_hover_exit(idx: int) -> void:
-	if _hover_idx == idx:
-		_hover_idx = -1
-	if idx < _cards.size():
-		_apply_card_style(_cards[idx], _offers[idx].rarity, _offers[idx] == _selected_mod, false)
+func _on_card_hover_exit(mod: Module) -> void:
+	if _hover_mod == mod:
+		_hover_mod = null
+	var idx := _offers.find(mod)
+	if idx >= 0 and idx < _cards.size():
+		_apply_card_style(_cards[idx], mod.rarity, mod == _selected_mod, false)
 
 func _refresh_selection() -> void:
 	for i in range(mini(_cards.size(), _offers.size())):
-		var hovered := (i == _hover_idx)
+		var hovered := (_offers[i] == _hover_mod)
 		_apply_card_style(_cards[i], _offers[i].rarity, _offers[i] == _selected_mod, hovered)

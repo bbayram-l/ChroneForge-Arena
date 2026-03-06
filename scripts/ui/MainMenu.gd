@@ -191,4 +191,3 @@ func _changelog_text() -> String:
 	var text := f.get_as_text()
 	f.close()
 	return text
-

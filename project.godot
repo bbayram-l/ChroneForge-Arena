@@ -21,12 +21,17 @@ config/icon="res://icon.svg"
 GameState="*res://scripts/autoload/GameState.gd"
 ModuleRegistry="*res://scripts/autoload/ModuleRegistry.gd"
 GameLogger="*res://scripts/autoload/Logger.gd"
+GRBServer="*uid://hwkgc74v20qq"
 
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=800
 window/stretch/mode="canvas_items"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot-runtime-bridge/plugin.cfg")
 
 [rendering]
 
