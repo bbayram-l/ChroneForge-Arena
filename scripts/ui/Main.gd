@@ -139,7 +139,7 @@ func _setup_ui() -> void:
 
 	# Shop panel — below HUD
 	shop_panel = ShopPanel.new()
-	shop_panel.position = Vector2(22.0, 640.0)
+	shop_panel.position = Vector2(22.0, 636.0)
 	canvas.add_child(shop_panel)
 	shop_panel.module_selected.connect(_on_module_selected)
 	shop_panel.drag_started.connect(_on_shop_drag_started)
@@ -573,7 +573,7 @@ func _start_replay() -> void:
 		_last_result.get("duration_seconds", 0.0),
 	]
 	var speed_btn: Button = _replay_panel.get_node("SpeedBtn")
-	speed_btn.text = "▶▶  2×"
+	speed_btn.text = "1×  ▶  2×"
 
 	_results_panel.visible = false
 	_replay_panel.visible  = true
@@ -667,14 +667,14 @@ func _replay_update_keywords(state: Dictionary) -> void:
 	var parts: PackedStringArray = []
 	if p_burn  > 0: parts.append("[BURN x%d]" % p_burn)
 	if p_crack > 0: parts.append("[CRACK x%d]" % p_crack)
-	if p_oc:        parts.append("[OVERCHARGE]")
+	if p_oc:        parts.append("[OVERPWR]")
 	p_kw.text = "  ".join(parts)
 
 	var e_kw: Label = _replay_panel.get_node("EnemyKeywords")
 	var eparts: PackedStringArray = []
 	if e_burn  > 0: eparts.append("[BURN x%d]" % e_burn)
 	if e_crack > 0: eparts.append("[CRACK x%d]" % e_crack)
-	if e_oc:        eparts.append("[OVERCHARGE]")
+	if e_oc:        eparts.append("[OVERPWR]")
 	e_kw.text = "  ".join(eparts)
 
 func _replay_update_events(events: Array, tick: int) -> void:
@@ -734,7 +734,7 @@ func _on_replay_speed_toggled() -> void:
 	_replay_speed_fast = not _replay_speed_fast
 	_replay_timer.wait_time = CombatEngine.TICK_RATE * (0.5 if _replay_speed_fast else 1.0)
 	var speed_btn: Button = _replay_panel.get_node("SpeedBtn")
-	speed_btn.text = "▶  1×" if _replay_speed_fast else "▶▶  2×"
+	speed_btn.text = "2×  ■  1×" if _replay_speed_fast else "1×  ▶  2×"
 
 func _stop_replay() -> void:
 	_replay_timer.stop()
@@ -791,6 +791,7 @@ func _build_archetype_panel() -> Panel:
 	var panel := Panel.new()
 	panel.position = Vector2(15.0, 155.0)
 	panel.size     = Vector2(PANEL_W, 460.0)
+	panel.z_index  = 5   # above combat log (z=0) and other overlays
 
 	var style := StyleBoxFlat.new()
 	style.bg_color     = Color(0.06, 0.06, 0.10, 0.98)
@@ -1052,6 +1053,7 @@ func _enter_shop_phase() -> void:
 	_style_btn(_upgrade_btn, Color("4a3a08"), Color("7a6010"))
 	player_grid_view.clear_highlights()
 	player_grid_view.set_mode_overlay("")
+	_combat_log.text = "— No fights yet —"
 
 	# Reset any overload-disabled modules from the previous fight
 	for mod in player_grid.get_all_modules():
@@ -1133,6 +1135,9 @@ func _on_combat_ended(result: Dictionary) -> void:
 		GameState.player_lives,
 	])
 
+	# Always show the fight results first — even on the final life
+	_populate_results_panel(result)
+
 	if GameState.is_run_over():
 		_enter_run_over()
 		return
@@ -1145,7 +1150,7 @@ func _on_combat_ended(result: Dictionary) -> void:
 func _enter_run_over() -> void:
 	phase = Phase.RUN_OVER
 	GameLogger.log_run_end(GameState.current_round - 1, GameState.total_wins, GameState.total_losses, GameState.mmr)
-	_results_panel.visible = false
+	# Leave _results_panel visible — run_over panel overlays it so player sees the last fight
 	_action_btn.disabled = true
 	var stats_lbl: Label = _run_over_panel.get_node("StatsLabel")
 	stats_lbl.text = (
@@ -1580,8 +1585,6 @@ func _print_combat_summary(result: Dictionary) -> void:
 	])
 	_last_result = result
 	_update_combat_log(result.get("event_log", []), result.winner)
-	if phase != Phase.RUN_OVER:
-		_populate_results_panel(result)
 
 func _update_combat_log(log: Array, winner: String) -> void:
 	const HIGHLIGHT := ["dodge", "paradox_overload", "emp_lock", "reflect",
