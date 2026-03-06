@@ -40,6 +40,10 @@ var _sell_mode:       bool   = false
 var _upgrade_mode:    bool   = false
 var _protected_cells: Array[Vector2i] = []
 
+# ── Screen-edge flash overlay ───────────────────────────────────────────────
+var _flash_rect:  ColorRect = null
+var _flash_tween: Tween     = null
+
 # ── Drag state ──────────────────────────────────────────────────────────────
 var _drag_mod:       Module = null
 var _drag_ghost:     Panel  = null
@@ -82,6 +86,7 @@ func _setup_ui() -> void:
 	_action_btn.text     = "READY"
 	_action_btn.pressed.connect(_on_action_pressed)
 	canvas.add_child(_action_btn)
+	_style_btn(_action_btn, Color("1a5c1a"), Color("2a8c2a"))   # green — go / confirm
 
 	# Reroll button — visible only in shop phase
 	_reroll_btn = Button.new()
@@ -90,6 +95,7 @@ func _setup_ui() -> void:
 	_reroll_btn.text     = "REROLL (2g)"
 	_reroll_btn.pressed.connect(_on_reroll_pressed)
 	canvas.add_child(_reroll_btn)
+	_style_btn(_reroll_btn, Color("2a2a3a"), Color("3a3a5a"))   # neutral blue-grey
 
 	# Sell button — toggles sell mode in shop phase
 	_sell_btn = Button.new()
@@ -98,6 +104,7 @@ func _setup_ui() -> void:
 	_sell_btn.text     = "SELL MODULE"
 	_sell_btn.pressed.connect(_on_sell_pressed)
 	canvas.add_child(_sell_btn)
+	_style_btn(_sell_btn, Color("5a1010"), Color("8a2020"))      # red — destructive
 
 	# Upgrade button — toggles upgrade mode in shop phase
 	_upgrade_btn = Button.new()
@@ -106,6 +113,7 @@ func _setup_ui() -> void:
 	_upgrade_btn.text     = "UPGRADE (★)"
 	_upgrade_btn.pressed.connect(_on_upgrade_pressed)
 	canvas.add_child(_upgrade_btn)
+	_style_btn(_upgrade_btn, Color("4a3a08"), Color("7a6010"))   # gold — upgrade
 
 	# Player grid — left side
 	# 6×(64+4)−4 = 404 px wide. Two grids centred: (1280−404−80−404)/2 = 196 px margin
@@ -175,6 +183,14 @@ func _setup_ui() -> void:
 	# Combat log — right sidebar panel
 	var log_panel := _build_combat_log_panel()
 	canvas.add_child(log_panel)
+
+	# Screen-edge weapon fire flash overlay (full-viewport, always on top, ignores mouse)
+	_flash_rect = ColorRect.new()
+	_flash_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flash_rect.color = Color.TRANSPARENT
+	_flash_rect.z_index = 10
+	canvas.add_child(_flash_rect)
 
 	_update_status()
 
@@ -672,14 +688,39 @@ func _replay_update_events(events: Array, tick: int) -> void:
 		var t: String     = entry.get("type", "")
 		var line: String
 		match t:
-			"shot":           line = "[t%d] %s fired %s → %.0f dmg" % [tick, actor, entry.get("module","?"), entry.get("damage",0.0)]
-			"emp_lock":       line = "[t%d] %s EMP locked: %s" % [tick, actor, entry.get("module","?")]
+			"shot":
+				line = "[t%d] %s fired %s → %.0f dmg" % [tick, actor, entry.get("module","?"), entry.get("damage",0.0)]
+				# Screen-edge flash: colour = weapon category colour
+				var mod_ref: Module = ModuleRegistry.get_module(entry.get("module", ""))
+				if mod_ref != null:
+					var flash_col: Color = MechGridView.CATEGORY_COLORS.get(mod_ref.category, Color("c43020"))
+					_trigger_flash(flash_col)
+			"emp_lock":
+				line = "[t%d] %s EMP locked: %s" % [tick, actor, entry.get("module","?")]
+				_trigger_flash(Color("2050e0"))   # blue — EMP
 			"dodge":          line = "[t%d] %s DODGED a shot" % [tick, actor]
 			"reflect":        line = "[t%d] %s REFLECTED %.0f dmg" % [tick, actor, entry.get("reflected",0.0)]
-			"rewind_shield":  line = "[t%d] %s REWIND → shield restored" % [tick, actor]
-			"paradox_overload": line = "[t%d] %s OVERLOAD → %s disabled" % [tick, actor, entry.get("module","?")]
-			"capacitor_explosion": line = "[t%d] %s CAPACITOR EXPLODED (30 dmg)" % [tick, actor]
-			"overdrive_vent": line = "[t%d] %s VENTED all heat" % [tick, actor]
+			"rewind_shield":
+				line = "[t%d] %s REWIND → shield restored" % [tick, actor]
+				_trigger_flash(Color("20d0d0"))   # cyan — rewind
+				# Brief cyan pulse on the appropriate HP bar to signal shield restoration
+				var hp_node_name := "PlayerHPFill" if actor == "player" else "EnemyHPFill"
+				var hp_fill: ColorRect = _replay_panel.get_node(hp_node_name)
+				var orig_col := hp_fill.color
+				var rw_tw := create_tween()
+				rw_tw.tween_property(hp_fill, "color", Color("20d0d0"), 0.08)
+				rw_tw.tween_property(hp_fill, "color", orig_col, 0.20)
+			"paradox_overload":
+				line = "[t%d] %s OVERLOAD → %s disabled" % [tick, actor, entry.get("module","?")]
+				_trigger_flash(Color("9020c0"))   # purple — paradox overload
+				_shake_grid(player_grid_view if actor == "player" else enemy_grid_view)
+			"capacitor_explosion":
+				line = "[t%d] %s CAPACITOR EXPLODED (30 dmg)" % [tick, actor]
+				_trigger_flash(Color("e04010"))   # orange-red — explosion
+				_shake_grid(player_grid_view if actor == "player" else enemy_grid_view)
+			"overdrive_vent":
+				line = "[t%d] %s VENTED all heat" % [tick, actor]
+				_trigger_flash(Color("e06010"))   # orange — heat vent
 			"reactive_armor": line = "[t%d] %s REACTIVE absorbed burst" % [tick, actor]
 			_:                line = ""
 		if line != "":
@@ -1007,7 +1048,10 @@ func _enter_shop_phase() -> void:
 	_upgrade_mode = false
 	_sell_btn.text    = "SELL MODULE"
 	_upgrade_btn.text = "UPGRADE (★)"
+	_style_btn(_sell_btn,    Color("5a1010"), Color("8a2020"))
+	_style_btn(_upgrade_btn, Color("4a3a08"), Color("7a6010"))
 	player_grid_view.clear_highlights()
+	player_grid_view.set_mode_overlay("")
 
 	# Reset any overload-disabled modules from the previous fight
 	for mod in player_grid.get_all_modules():
@@ -1043,6 +1087,7 @@ func _start_combat() -> void:
 	_upgrade_mode = false
 	_selected_offer = null
 	player_grid_view.clear_highlights()
+	player_grid_view.set_mode_overlay("")
 
 	var combat_seed := GameState.current_round * 1337 + GameState.mmr
 
@@ -1132,7 +1177,10 @@ func _on_module_selected(mod: Module) -> void:
 	_upgrade_mode = false
 	_sell_btn.text    = "SELL MODULE"
 	_upgrade_btn.text = "UPGRADE (★)"
+	_style_btn(_sell_btn,    Color("5a1010"), Color("8a2020"))
+	_style_btn(_upgrade_btn, Color("4a3a08"), Color("7a6010"))
 	_selected_offer = mod
+	player_grid_view.set_mode_overlay("")
 	player_grid_view.highlight_valid(mod, player_grid)
 
 func _on_player_cell_clicked(pos: Vector2i) -> void:
@@ -1207,13 +1255,18 @@ func _on_sell_pressed() -> void:
 	_sell_mode = not _sell_mode
 	if _sell_mode:
 		_sell_btn.text    = "CANCEL SELL"
+		_style_btn(_sell_btn, Color("8a1010"), Color("b02020"))   # bright red = active
 		_upgrade_mode     = false
 		_upgrade_btn.text = "UPGRADE (★)"
+		_style_btn(_upgrade_btn, Color("4a3a08"), Color("7a6010"))
 		_selected_offer   = null
 		shop_panel.deselect()
 		player_grid_view.clear_highlights()
+		player_grid_view.set_mode_overlay("sell", _protected_cells)
 	else:
 		_sell_btn.text = "SELL MODULE"
+		_style_btn(_sell_btn, Color("5a1010"), Color("8a2020"))   # back to dim red
+		player_grid_view.set_mode_overlay("")
 
 func _on_upgrade_pressed() -> void:
 	if phase != Phase.SHOP_PHASE:
@@ -1221,15 +1274,59 @@ func _on_upgrade_pressed() -> void:
 	_upgrade_mode = not _upgrade_mode
 	if _upgrade_mode:
 		_upgrade_btn.text = "CANCEL UPGRADE"
+		_style_btn(_upgrade_btn, Color("8a6010"), Color("c09020"))  # bright gold = active
 		_sell_mode        = false
 		_sell_btn.text    = "SELL MODULE"
+		_style_btn(_sell_btn, Color("5a1010"), Color("8a2020"))
 		_selected_offer   = null
 		shop_panel.deselect()
 		player_grid_view.clear_highlights()
+		player_grid_view.set_mode_overlay("upgrade")
 	else:
 		_upgrade_btn.text = "UPGRADE (★)"
+		_style_btn(_upgrade_btn, Color("4a3a08"), Color("7a6010"))  # back to dim gold
+		player_grid_view.set_mode_overlay("")
 
 # ── Helpers ────────────────────────────────────────────────────────────────
+
+## Apply a flat colour theme to a Button (normal / hover / pressed states).
+func _style_btn(btn: Button, col_normal: Color, col_hover: Color) -> void:
+	var sn := StyleBoxFlat.new()
+	sn.bg_color = col_normal
+	sn.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("normal", sn)
+	var sh := StyleBoxFlat.new()
+	sh.bg_color = col_hover
+	sh.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("hover", sh)
+	var sp := StyleBoxFlat.new()
+	sp.bg_color = col_hover.lightened(0.15)
+	sp.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("pressed", sp)
+	var sd := StyleBoxFlat.new()
+	sd.bg_color = col_normal.darkened(0.4)
+	sd.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("disabled", sd)
+
+## Shake a grid view sideways for ~0.3 s (4 quick swings).
+func _shake_grid(view: MechGridView) -> void:
+	var origin := view.position
+	var tw := create_tween()
+	tw.tween_property(view, "position:x", origin.x + 6.0, 0.04)
+	tw.tween_property(view, "position:x", origin.x - 6.0, 0.06)
+	tw.tween_property(view, "position:x", origin.x + 4.0, 0.06)
+	tw.tween_property(view, "position:x", origin.x - 4.0, 0.06)
+	tw.tween_property(view, "position:x", origin.x, 0.06)
+
+## Flash the screen edge briefly with `col` (semi-transparent, fades in ~0.25 s).
+func _trigger_flash(col: Color) -> void:
+	if _flash_rect == null:
+		return
+	if _flash_tween and _flash_tween.is_valid():
+		_flash_tween.kill()
+	_flash_rect.color = Color(col.r, col.g, col.b, 0.30)
+	_flash_tween = create_tween()
+	_flash_tween.tween_property(_flash_rect, "color:a", 0.0, 0.25)
 
 func _update_status(suffix: String = "") -> void:
 	var lives_str := ""

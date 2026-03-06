@@ -548,8 +548,9 @@ func _deal_to_player(raw: float, _source: Module) -> void:
 		enemy_hp = maxf(0.0, enemy_hp - reflected)
 		_log("reflect", true, {"reflected": snappedf(reflected, 0.01)})
 
-	# rewind_shield: restore shield to 2-s-ago snapshot on first depletion
-	if not _p_rewind_used and player_shield <= 0.0 and _has_module(player_grid, "rewind_shield"):
+	# rewind_shield: restore shield to 2-s-ago snapshot on first depletion.
+	# Guard: require ≥20 ticks (2 s) elapsed so a valid snapshot exists.
+	if not _p_rewind_used and player_shield <= 0.0 and tick_count >= 20 and _has_module(player_grid, "rewind_shield"):
 		player_shield = _p_shield_snap
 		_p_rewind_used = true
 		_log("rewind_shield", true, {"restored": snappedf(_p_shield_snap, 0.1)})
@@ -582,8 +583,9 @@ func _deal_to_enemy(raw: float, _source: Module) -> void:
 		player_hp = maxf(0.0, player_hp - reflected)
 		_log("reflect", false, {"reflected": snappedf(reflected, 0.01)})
 
-	# rewind_shield: restore shield to 2-s-ago snapshot on first depletion
-	if not _e_rewind_used and enemy_shield <= 0.0 and _has_module(enemy_grid, "rewind_shield"):
+	# rewind_shield: restore shield to 2-s-ago snapshot on first depletion.
+	# Guard: require ≥20 ticks (2 s) elapsed so a valid snapshot exists.
+	if not _e_rewind_used and enemy_shield <= 0.0 and tick_count >= 20 and _has_module(enemy_grid, "rewind_shield"):
 		enemy_shield = _e_shield_snap
 		_e_rewind_used = true
 		_log("rewind_shield", false, {"restored": snappedf(_e_shield_snap, 0.1)})
@@ -665,7 +667,7 @@ static func _base_hp(grid: MechGrid) -> float:
 	var hp := 100.0
 	for mod in grid.get_all_modules():
 		hp += mod.hp
-	return hp
+	return minf(hp, 300.0)
 
 static func _base_shield(grid: MechGrid) -> float:
 	var shield := 0.0

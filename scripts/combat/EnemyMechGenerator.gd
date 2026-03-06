@@ -219,10 +219,12 @@ static func _apply_star_upgrades(grid: MechGrid, tier: int) -> void:
 			mod.upgrade()
 
 ## Returns 0–3 tier based on round.
+## Staggered to give player more time to build before enemy star upgrades kick in.
+## T0 (R1-5): bare builds. T1 (R6-9): weapons ★2. T2 (R10-13): all ★2. T3 (R14+): weapons ★3.
 static func _tier_for_round(round_num: int) -> int:
-	if round_num <= 3:   return 0
-	if round_num <= 7:   return 1
-	if round_num <= 11:  return 2
+	if round_num <= 5:   return 0
+	if round_num <= 9:   return 1
+	if round_num <= 13:  return 2
 	return 3
 
 ## Rarity ceiling rises with round number, matching shop odds progression.

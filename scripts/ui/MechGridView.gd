@@ -36,11 +36,22 @@ var _com:          Vector2   = Vector2(3.0, 3.0)   # center-of-mass in grid coor
 var _show_com:     bool      = false
 var _fp_cells:     Array     = []            # Array[Vector2i] drag-footprint cells
 var _fp_valid:     bool      = false
+var _mode_overlay: String    = ""           # "sell", "upgrade", or "" for none
+var _protected:    Array     = []           # Array[Vector2i] cells immune to sell overlay
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
 	_build()
+
+func _process(_delta: float) -> void:
+	# Continuously redraw only when the torque visualizer has a significant imbalance
+	# so the pulsing COM ring animates. Skipped when grid is empty.
+	if _show_com and _current_grid != null:
+		var step := float(CELL_SIZE + CELL_GAP)
+		var ideal := Vector2(MechGrid.GRID_WIDTH, MechGrid.GRID_HEIGHT) * step * 0.5
+		if (_com * step - ideal).length() > 30.0:
+			queue_redraw()
 
 func _build() -> void:
 	_panels = []
@@ -114,6 +125,14 @@ func highlight_valid(module: Module, grid: MechGrid) -> void:
 		for x in range(MechGrid.GRID_WIDTH):
 			_redraw_cell(Vector2i(x, y))
 
+## Set a mode overlay on all grid cells to signal sell/upgrade intent visually.
+## mode: "sell" (red border), "upgrade" (gold border), "" (clear).
+func set_mode_overlay(mode: String, protected_cells: Array = []) -> void:
+	_mode_overlay = mode
+	_protected    = protected_cells
+	if _current_grid:
+		refresh(_current_grid)
+
 ## Remove all placement highlights and reset hover state.
 func clear_highlights() -> void:
 	_highlighted = []
@@ -162,8 +181,13 @@ func _draw() -> void:
 	draw_circle(ideal, 3.0, Color(1, 1, 1, 0.25))
 
 	# Orange COM indicator + line showing offset from ideal
-	if (com_px - ideal).length() > 3.0:
+	var offset := (com_px - ideal).length()
+	if offset > 3.0:
 		draw_line(ideal, com_px, Color("ff6030aa"), 1.5)
+	# Pulse outer ring when torque imbalance is significant (> 30 px offset)
+	var pulse := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) / 400.0)
+	if offset > 30.0:
+		draw_circle(com_px, 9.0 + 2.0 * pulse, Color(1.0, 0.38, 0.19, 0.4 * pulse))
 	draw_circle(com_px, 5.0, Color("ff6030"))
 
 	# Synergy borders — colour-coded per active synergy
@@ -197,6 +221,9 @@ func _redraw_cell(pos: Vector2i) -> void:
 		base = base.darkened(0.65)
 
 	var final_color := base
+	var overlay_border: Color = Color.TRANSPARENT
+	var overlay_border_w: int = 0
+
 	if _fp_cells.has(pos):
 		final_color = FOOTPRINT_VALID_COL if _fp_valid else FOOTPRINT_INVALID_COL
 	elif _highlighted.has(pos):
@@ -204,22 +231,45 @@ func _redraw_cell(pos: Vector2i) -> void:
 			final_color = HOVER_COLOR if pos == _hovered_pos else HIGHLIGHT_COLOR
 		else:
 			final_color = base.lightened(0.3)
+	elif not cell.is_empty() and _mode_overlay != "":
+		# Sell mode: red border on sellable cells; gold on protected (can't sell)
+		if _mode_overlay == "sell":
+			if pos in _protected:
+				overlay_border   = Color("555520")
+				overlay_border_w = 2
+			else:
+				overlay_border   = Color("c02020")
+				overlay_border_w = 2
+				final_color      = base.darkened(0.2)
+		# Upgrade mode: gold border on cells that can still be upgraded
+		elif _mode_overlay == "upgrade":
+			if cell.module.star_level < Module.MAX_STARS:
+				overlay_border   = Color("c0a020")
+				overlay_border_w = 2
+				final_color      = base.lightened(0.1)
 
-	_apply_style(panel, final_color)
+	_apply_style(panel, final_color, overlay_border, overlay_border_w)
 	if cell.is_empty():
 		label.text = ""
 	else:
 		var stars := "★".repeat(cell.module.star_level - 1)
 		label.text = cell.module.display_name + ("\n" + stars if stars else "")
 
-func _apply_style(panel: Panel, color: Color) -> void:
+func _apply_style(panel: Panel, color: Color, border: Color = Color.TRANSPARENT, border_w: int = 1) -> void:
 	var style := StyleBoxFlat.new()
-	style.bg_color            = color
-	style.border_color        = color.lightened(0.25)
-	style.border_width_left   = 1
-	style.border_width_right  = 1
-	style.border_width_top    = 1
-	style.border_width_bottom = 1
+	style.bg_color = color
+	if border != Color.TRANSPARENT and border_w > 1:
+		style.border_color        = border
+		style.border_width_left   = border_w
+		style.border_width_right  = border_w
+		style.border_width_top    = border_w
+		style.border_width_bottom = border_w
+	else:
+		style.border_color        = color.lightened(0.25)
+		style.border_width_left   = 1
+		style.border_width_right  = 1
+		style.border_width_top    = 1
+		style.border_width_bottom = 1
 	style.corner_radius_top_left     = 4
 	style.corner_radius_top_right    = 4
 	style.corner_radius_bottom_left  = 4

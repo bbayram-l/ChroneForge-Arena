@@ -62,8 +62,8 @@ func remove_offer(mod: Module) -> void:
 	_cards[idx].queue_free()
 	_cards.remove_at(idx)
 	_offers.remove_at(idx)
-	for i in range(_cards.size()):
-		_cards[i].position.x = float(i * (CARD_W + GAP))
+	# Cards keep their original slot x-positions so remaining slots are predictable.
+	# Do NOT reposition — gaps appear but click coordinates stay stable.
 
 func deselect() -> void:
 	_selected_mod = null

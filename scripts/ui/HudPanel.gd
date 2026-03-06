@@ -31,8 +31,16 @@ var _arch_lbl:    Label
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────
 
+var _last_pdx_rate: float = 0.0
+
 func _ready() -> void:
 	_build()
+
+func _process(_delta: float) -> void:
+	# Repaint the PDX bar every frame so the danger pulse animates smoothly.
+	if _last_pdx_rate >= 30.0 and is_instance_valid(_pdx2_fill):
+		var pulse := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) / 350.0)
+		_pdx2_fill.color = Color("c03020").lerp(Color("e050e0"), pulse)
 
 func _build() -> void:
 	var rows := [
@@ -235,6 +243,7 @@ func refresh(grid: MechGrid) -> void:
 	_heat_lbl.text   = "%+.0f/s" % (-net_heat_rate)
 
 	# Paradox rate (max display = 50/s; danger colour above 30/s)
+	_last_pdx_rate = pdx_rate
 	const PDX_DISPLAY_MAX: float = 50.0
 	_set_bar(_pdx_fill, pdx_rate / PDX_DISPLAY_MAX)
 	_pdx_fill.color = Color("7030b0") if pdx_rate < 30.0 else Color("c03020")
@@ -258,14 +267,24 @@ func refresh(grid: MechGrid) -> void:
 	for qi in range(4):
 		var fill_t := clampf(quad_gen[qi] / QUAD_HEAT_REF, 0.0, 1.0)
 		_quad_fills[qi].size.x = fill_t * float(MINI_BAR_W)
-		_quad_fills[qi].color  = _traffic_color(1.0 - fill_t, Color("e06010"))
+		# Near-threshold glow: brighten toward white-orange when > 80% of QUAD_HEAT_REF
+		if fill_t >= 0.8:
+			var danger := (fill_t - 0.8) / 0.2   # 0→1 as heat goes 80%→100%
+			_quad_fills[qi].color = Color("e06010").lerp(Color("ff2000"), danger)
+		else:
+			_quad_fills[qi].color = _traffic_color(1.0 - fill_t, Color("e06010"))
 		var net_q: float = float(quad_gen[qi]) - (HeatSystem.BASE_DISSIPATION / 4.0 + float(quad_cool[qi]))
 		_quad_lbls[qi].text = "%+.0f/s" % (-net_q)
 
 	# Bottom paradox bar (rate-based, same scale as top PDX bar)
 	_pdx2_fill.size.x = clampf(pdx_rate / 50.0, 0.0, 1.0) * float(MINI_BAR_W)
-	_pdx2_fill.color  = Color("7030b0") if pdx_rate < 30.0 else Color("c03020")
-	_pdx2_lbl.text    = "+%.0f/s" % pdx_rate
+	if pdx_rate >= 30.0:
+		# Pulse between danger red and bright magenta above threshold
+		var pulse := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) / 350.0)
+		_pdx2_fill.color = Color("c03020").lerp(Color("e050e0"), pulse)
+	else:
+		_pdx2_fill.color = Color("7030b0")
+	_pdx2_lbl.text = "+%.0f/s" % pdx_rate
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
