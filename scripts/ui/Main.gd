@@ -1352,8 +1352,8 @@ func _process(_delta: float) -> void:
 	var cell := _screen_to_grid_cell(mouse, player_grid_view)
 	if cell.x >= 0:
 		var gs   := _drag_mod.grid_size
-		var ox   := clamp(cell.x - gs.x / 2, 0, MechGrid.GRID_WIDTH  - gs.x)
-		var oy   := clamp(cell.y - gs.y / 2, 0, MechGrid.GRID_HEIGHT - gs.y)
+		var ox: int = clamp(cell.x - gs.x / 2, 0, MechGrid.GRID_WIDTH  - gs.x)
+		var oy: int = clamp(cell.y - gs.y / 2, 0, MechGrid.GRID_HEIGHT - gs.y)
 		var origin := Vector2i(ox, oy)
 		if origin != _drag_last_cell:
 			_drag_last_cell = origin
@@ -1378,7 +1378,7 @@ func _on_shop_drag_started(mod: Module) -> void:
 	_selected_offer = null
 	player_grid_view.clear_highlights()
 
-	var cat_col := MechGridView.CATEGORY_COLORS.get(mod.category, Color("333333"))
+	var cat_col: Color = MechGridView.CATEGORY_COLORS.get(mod.category, Color("333333"))
 	_drag_ghost      = Panel.new()
 	_drag_ghost.size = Vector2(110.0, 38.0)
 	_drag_ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1413,8 +1413,8 @@ func _on_shop_drag_dropped(mod: Module, screen_pos: Vector2) -> void:
 	if cell.x < 0:
 		return
 	var gs     := mod.grid_size
-	var ox     := clamp(cell.x - gs.x / 2, 0, MechGrid.GRID_WIDTH  - gs.x)
-	var oy     := clamp(cell.y - gs.y / 2, 0, MechGrid.GRID_HEIGHT - gs.y)
+	var ox: int = clamp(cell.x - gs.x / 2, 0, MechGrid.GRID_WIDTH  - gs.x)
+	var oy: int = clamp(cell.y - gs.y / 2, 0, MechGrid.GRID_HEIGHT - gs.y)
 	var origin := Vector2i(ox, oy)
 	if GameState.gold < mod.cost:
 		print("[Shop] Not enough gold (need %d, have %d)" % [mod.cost, GameState.gold])
