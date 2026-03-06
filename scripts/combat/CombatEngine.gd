@@ -33,6 +33,9 @@ var player_hp:     float
 var player_shield: float
 var enemy_hp:      float
 var enemy_shield:  float
+# Max HP after all init bonuses (Fortress synergy etc.) — used for result dict and timeout %
+var _p_hp_max: float = 0.0
+var _e_hp_max: float = 0.0
 
 var tick_count: int = 0
 var event_log:  Array[Dictionary] = []
@@ -109,6 +112,9 @@ func _init(p_grid: MechGrid, e_grid: MechGrid, rng_seed: int = 0) -> void:
 		player_hp *= 1.15
 	if _has_category(enemy_grid, Module.Category.STRUCTURAL) and _has_category(enemy_grid, Module.Category.DEFENSE):
 		enemy_hp *= 1.15
+	# Capture actual starting HP after all bonuses for accurate result reporting
+	_p_hp_max = player_hp
+	_e_hp_max = enemy_hp
 
 # ── Public API ─────────────────────────────────────────────────────────────
 
@@ -197,9 +203,9 @@ func run_simulation() -> Dictionary:
 	elif enemy_hp <= 0.0:
 		winner = "player"
 	else:
-		# Timeout: compare HP as a % of each side's starting max
-		var p_pct := player_hp / maxf(_base_hp(player_grid), 1.0)
-		var e_pct := enemy_hp  / maxf(_base_hp(enemy_grid),  1.0)
+		# Timeout: compare HP as a % of each side's actual starting max (post-synergy)
+		var p_pct := player_hp / maxf(_p_hp_max, 1.0)
+		var e_pct := enemy_hp  / maxf(_e_hp_max, 1.0)
 		if absf(p_pct - e_pct) < 0.10:
 			winner = "draw"
 		elif p_pct > e_pct:
@@ -209,9 +215,9 @@ func run_simulation() -> Dictionary:
 
 	var result := {
 		"winner":              winner,
-		"player_hp_initial":   _base_hp(player_grid),
+		"player_hp_initial":   _p_hp_max,
 		"player_hp_remaining": player_hp,
-		"enemy_hp_initial":    _base_hp(enemy_grid),
+		"enemy_hp_initial":    _e_hp_max,
 		"enemy_hp_remaining":  enemy_hp,
 		"ticks":               tick_count,
 		"duration_seconds":    tick_count * TICK_RATE,
@@ -278,9 +284,9 @@ func _tick() -> void:
 
 	# repair_drone: regen 1 HP per tick (10 HP/sec), capped at starting max
 	if _has_module(player_grid, "repair_drone"):
-		player_hp = minf(_base_hp(player_grid), player_hp + 1.0)
+		player_hp = minf(_p_hp_max, player_hp + 1.0)
 	if _has_module(enemy_grid, "repair_drone"):
-		enemy_hp = minf(_base_hp(enemy_grid), enemy_hp + 1.0)
+		enemy_hp = minf(_e_hp_max, enemy_hp + 1.0)
 
 	# overdrive_vent: dump all quadrant heat when any quadrant hits disable threshold (costs 15 HP)
 	if _has_module(player_grid, "overdrive_vent"):

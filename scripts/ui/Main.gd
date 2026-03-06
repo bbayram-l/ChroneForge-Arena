@@ -745,6 +745,7 @@ func _build_run_over_panel() -> Control:
 	var panel := Panel.new()
 	panel.position = Vector2(290.0, 200.0)
 	panel.size     = Vector2(700.0, 340.0)
+	panel.z_index  = 5    # above results panel (z=0), below flash overlay (z=10)
 
 	var style := StyleBoxFlat.new()
 	style.bg_color     = Color(0.08, 0.08, 0.10, 0.95)
