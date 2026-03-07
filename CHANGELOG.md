@@ -14,6 +14,33 @@
   - **Light Frame** — unchanged at cost **2**, HP **10**.
     Remains the baseline common structural filler.
 
+- **Full module rebalance pass (all flagged outliers):**
+  - **STRUCTURAL / DEFENSE / AI**
+    - `carbon_weave` HP **8 -> 10**
+    - `gyro_stabilizer` cost **4 -> 3**, power_draw **5 -> 4**, heat_gen **2 -> 1.5**
+    - `blast_plating` HP **28 -> 24**, heat_reduction **4 -> 3**
+    - `armored_chassis` HP **70 -> 62**
+    - `reactive_armor` HP **20 -> 24**
+    - `overload_safeguard` cost **4 -> 5**, heat_reduction **8 -> 7**
+  - **POWER / TEMPORAL power spikes**
+    - `capacitor_bank` now grants power (power_gen **0 -> 30**), heat_gen **0 -> 6**, paradox_rate **0 -> 8**
+    - `power_router` cost **4 -> 3**, power_gen **10 -> 12**, heat_gen **2 -> 1**
+    - `overcharge_cell` cost **9 -> 10**, power_gen **130 -> 120**, paradox_rate **12 -> 18**
+    - `void_resonator` cost **11 -> 12**, power_gen **60 -> 55**, paradox_rate **55 -> 62**
+  - **THERMAL**
+    - `overdrive_vent` cost **5 -> 6**, heat_reduction **50 -> 40**, power_draw **8 -> 9**
+  - **WEAPONS**
+    - `pulse_cannon` base_damage **12 -> 11**
+    - `scatter_burst` fire_rate **3.5 -> 3.2**, heat_gen **4.5 -> 5**
+    - `auto_turret` fire_rate **4.5 -> 4.0**, heat_gen **6 -> 6.5**
+    - `plasma_saw` cost **5 -> 6**, base_damage **18 -> 16**, fire_rate **2.5 -> 2.3**, heat_gen **22.5 -> 24**
+    - `emp_burst` cost **4 -> 3**, power_draw **12 -> 10**, heat_gen **6 -> 5**
+    - `missile_pod` base_damage **10 -> 12**, power_draw **18 -> 16**
+    - `gravity_mine` fire_rate **0.33 -> 0.40**
+    - `railgun` base_damage **35 -> 40**, power_draw **30 -> 28**, heat_gen **30 -> 27**
+    - `void_spike` fire_rate **0.33 -> 0.38**, power_draw **30 -> 28**
+    - `siege_cannon` cost **9 -> 8**, power_draw **45 -> 40**, fire_rate **0.20 -> 0.24**, heat_gen **52.5 -> 48**
+
 ### UI / Visual Fixes
 
 - **Module art fit and chamfer pass (grid):**

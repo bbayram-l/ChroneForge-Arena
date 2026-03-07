@@ -10,11 +10,38 @@
   - [b]Light Frame[/b] — unchanged at cost [b]2[/b], HP [b]10[/b].
   Remains the baseline common structural filler.
 
+• [b]Full module rebalance pass (all flagged outliers):[/b]
+  - [b]STRUCTURAL / DEFENSE / AI[/b]
+    • [b]carbon_weave[/b] HP [b]8 -> 10[/b]
+    • [b]gyro_stabilizer[/b] cost [b]4 -> 3[/b], power_draw [b]5 -> 4[/b], heat_gen [b]2 -> 1.5[/b]
+    • [b]blast_plating[/b] HP [b]28 -> 24[/b], heat_reduction [b]4 -> 3[/b]
+    • [b]armored_chassis[/b] HP [b]70 -> 62[/b]
+    • [b]reactive_armor[/b] HP [b]20 -> 24[/b]
+    • [b]overload_safeguard[/b] cost [b]4 -> 5[/b], heat_reduction [b]8 -> 7[/b]
+  - [b]POWER / TEMPORAL power spikes[/b]
+    • [b]capacitor_bank[/b] now grants power (power_gen [b]0 -> 30[/b]), heat_gen [b]0 -> 6[/b], paradox_rate [b]0 -> 8[/b]
+    • [b]power_router[/b] cost [b]4 -> 3[/b], power_gen [b]10 -> 12[/b], heat_gen [b]2 -> 1[/b]
+    • [b]overcharge_cell[/b] cost [b]9 -> 10[/b], power_gen [b]130 -> 120[/b], paradox_rate [b]12 -> 18[/b]
+    • [b]void_resonator[/b] cost [b]11 -> 12[/b], power_gen [b]60 -> 55[/b], paradox_rate [b]55 -> 62[/b]
+  - [b]THERMAL[/b]
+    • [b]overdrive_vent[/b] cost [b]5 -> 6[/b], heat_reduction [b]50 -> 40[/b], power_draw [b]8 -> 9[/b]
+  - [b]WEAPONS[/b]
+    • [b]pulse_cannon[/b] base_damage [b]12 -> 11[/b]
+    • [b]scatter_burst[/b] fire_rate [b]3.5 -> 3.2[/b], heat_gen [b]4.5 -> 5[/b]
+    • [b]auto_turret[/b] fire_rate [b]4.5 -> 4.0[/b], heat_gen [b]6 -> 6.5[/b]
+    • [b]plasma_saw[/b] cost [b]5 -> 6[/b], base_damage [b]18 -> 16[/b], fire_rate [b]2.5 -> 2.3[/b], heat_gen [b]22.5 -> 24[/b]
+    • [b]emp_burst[/b] cost [b]4 -> 3[/b], power_draw [b]12 -> 10[/b], heat_gen [b]6 -> 5[/b]
+    • [b]missile_pod[/b] base_damage [b]10 -> 12[/b], power_draw [b]18 -> 16[/b]
+    • [b]gravity_mine[/b] fire_rate [b]0.33 -> 0.40[/b]
+    • [b]railgun[/b] base_damage [b]35 -> 40[/b], power_draw [b]30 -> 28[/b], heat_gen [b]30 -> 27[/b]
+    • [b]void_spike[/b] fire_rate [b]0.33 -> 0.38[/b], power_draw [b]30 -> 28[/b]
+    • [b]siege_cannon[/b] cost [b]9 -> 8[/b], power_draw [b]45 -> 40[/b], fire_rate [b]0.20 -> 0.24[/b], heat_gen [b]52.5 -> 48[/b]
+
 [color=#ffdd88]UI / Visual Fixes[/color]
 
 • [b]Module art fit and chamfer pass (grid):[/b]
   - Grid module art now uses [b]aspect-covered fit[/b] with [b]0 overscan[/b]
-    so images fill cells without appearing tiny.
+	so images fill cells without appearing tiny.
   - Removed the extra corner overlay mask that produced square-looking artifacts.
   - Kept a single anti-aliased chamfer mask on module images for cleaner corners.
 

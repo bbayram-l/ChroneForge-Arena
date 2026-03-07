@@ -31,14 +31,14 @@
 	"category": "STRUCTURAL",
 	"rarity": "UNCOMMON",
 	"description": "Reduces torque imbalance penalty by 30%.",
-	"cost": 4,
+	"cost": 3,
 	"grid_w": 1,
 	"grid_h": 1,
 	"weight": 1.0,
 	"structural_load": 1.0,
 	"hp": 15.0,
-	"power_draw": 5.0,
-	"heat_gen": 2.0
+	"power_draw": 4.0,
+	"heat_gen": 1.5
   },
   {
 	"id": "shock_bracing",
@@ -106,7 +106,10 @@
 	"grid_w": 1,
 	"grid_h": 1,
 	"weight": 1.5,
-	"structural_load": 1.5
+	"structural_load": 1.5,
+	"power_gen": 30.0,
+	"heat_gen": 6.0,
+	"paradox_rate": 8.0
   },
   {
 	"id": "power_router",
@@ -114,13 +117,13 @@
 	"category": "POWER",
 	"rarity": "UNCOMMON",
 	"description": "Adjacent power modules gain +10% efficiency instead of +5%.",
-	"cost": 4,
+	"cost": 3,
 	"grid_w": 1,
 	"grid_h": 1,
 	"weight": 1.0,
 	"structural_load": 1.0,
-	"power_gen": 10.0,
-	"heat_gen": 2.0
+	"power_gen": 12.0,
+	"heat_gen": 1.0
   },
   {
 	"id": "pulse_cannon",
@@ -134,7 +137,7 @@
 	"weight": 1.5,
 	"structural_load": 1.5,
 	"power_draw": 10.0,
-	"base_damage": 12.0,
+	"base_damage": 11.0,
 	"fire_rate": 1.5,
 	"recoil_force": 0.3,
 	"heat_gen": 9.0
@@ -150,11 +153,11 @@
 	"grid_h": 1,
 	"weight": 4.0,
 	"structural_load": 3.0,
-	"power_draw": 30.0,
-	"base_damage": 35.0,
+	"power_draw": 28.0,
+	"base_damage": 40.0,
 	"fire_rate": 0.45,
 	"recoil_force": 2.5,
-	"heat_gen": 30.0
+	"heat_gen": 27.0
   },
   {
 	"id": "plasma_saw",
@@ -162,16 +165,16 @@
 	"category": "WEAPON",
 	"rarity": "RARE",
 	"description": "High-DPS melee-range weapon. Generates intense heat.",
-	"cost": 5,
+	"cost": 6,
 	"grid_w": 1,
 	"grid_h": 1,
 	"weight": 2.0,
 	"structural_load": 2.0,
 	"power_draw": 20.0,
-	"base_damage": 18.0,
-	"fire_rate": 2.5,
+	"base_damage": 16.0,
+	"fire_rate": 2.3,
 	"recoil_force": 0.1,
-	"heat_gen": 22.5
+	"heat_gen": 24.0
   },
   {
 	"id": "missile_pod",
@@ -184,8 +187,8 @@
 	"grid_h": 1,
 	"weight": 2.5,
 	"structural_load": 2.0,
-	"power_draw": 18.0,
-	"base_damage": 10.0,
+	"power_draw": 16.0,
+	"base_damage": 12.0,
 	"fire_rate": 1.0,
 	"recoil_force": 0.8,
 	"heat_gen": 12.0
@@ -195,7 +198,7 @@
 	"name": "Shard Cannon",
 	"category": "WEAPON",
 	"rarity": "UNCOMMON",
-	"description": "Scatters shards \u00e2\u20ac\u201d lower per-shard damage, hits multiple cells.",
+	"description": "Scatters shards â€” lower per-shard damage, hits multiple cells.",
 	"cost": 4,
 	"grid_w": 1,
 	"grid_h": 1,
@@ -220,7 +223,7 @@
 	"structural_load": 1.0,
 	"power_draw": 15.0,
 	"base_damage": 35.0,
-	"fire_rate": 0.33,
+	"fire_rate": 0.4,
 	"heat_gen": 15.0
   },
   {
@@ -229,15 +232,15 @@
 	"category": "WEAPON",
 	"rarity": "UNCOMMON",
 	"description": "Deals no HP damage. Locks one random enemy module for 3 seconds.",
-	"cost": 4,
+	"cost": 3,
 	"grid_w": 1,
 	"grid_h": 1,
 	"weight": 1.0,
 	"structural_load": 1.0,
-	"power_draw": 12.0,
+	"power_draw": 10.0,
 	"base_damage": 0.0,
 	"fire_rate": 0.5,
-	"heat_gen": 6.0
+	"heat_gen": 5.0
   },
   {
 	"id": "echo_cannon",
@@ -281,7 +284,7 @@
 	"grid_h": 1,
 	"weight": 1.5,
 	"structural_load": 1.5,
-	"hp": 20.0
+	"hp": 24.0
   },
   {
 	"id": "energy_shield",
@@ -376,13 +379,13 @@
 	"category": "THERMAL",
 	"rarity": "RARE",
 	"description": "Dumps all quadrant heat instantly at the cost of 15 HP per activation.",
-	"cost": 5,
+	"cost": 6,
 	"grid_w": 1,
 	"grid_h": 1,
 	"weight": 1.0,
 	"structural_load": 1.0,
-	"heat_reduction": 50.0,
-	"power_draw": 8.0
+	"heat_reduction": 40.0,
+	"power_draw": 9.0
   },
   {
 	"id": "rewind_shield",
@@ -533,7 +536,7 @@
 	"grid_h": 1,
 	"weight": 0.3,
 	"structural_load": 0.3,
-	"hp": 8.0
+	"hp": 10.0
   },
   {
 	"id": "armored_chassis",
@@ -546,7 +549,7 @@
 	"grid_h": 1,
 	"weight": 4.0,
 	"structural_load": 2.0,
-	"hp": 70.0,
+	"hp": 62.0,
 	"heat_gen": 1.0
   },
   {
@@ -560,8 +563,8 @@
 	"grid_h": 1,
 	"weight": 2.0,
 	"structural_load": 1.5,
-	"hp": 28.0,
-	"heat_reduction": 4.0
+	"hp": 24.0,
+	"heat_reduction": 3.0
   },
   {
 	"id": "fusion_core",
@@ -596,14 +599,14 @@
 	"category": "POWER",
 	"rarity": "EPIC",
 	"description": "Overclocked power cell. Enormous energy at the cost of temporal stability.",
-	"cost": 9,
+	"cost": 10,
 	"grid_w": 1,
 	"grid_h": 1,
 	"weight": 2.0,
 	"structural_load": 2.0,
-	"power_gen": 130.0,
+	"power_gen": 120.0,
 	"heat_gen": 12.0,
-	"paradox_rate": 12.0
+	"paradox_rate": 18.0
   },
   {
 	"id": "scatter_burst",
@@ -618,9 +621,9 @@
 	"structural_load": 1.0,
 	"power_draw": 8.0,
 	"base_damage": 5.0,
-	"fire_rate": 3.5,
+	"fire_rate": 3.2,
 	"recoil_force": 0.15,
-	"heat_gen": 4.5
+	"heat_gen": 5.0
   },
   {
 	"id": "twin_blaster",
@@ -662,16 +665,16 @@
 	"category": "WEAPON",
 	"rarity": "EPIC",
 	"description": "The heaviest mount. Fires rarely but devastates on impact.",
-	"cost": 9,
+	"cost": 8,
 	"grid_w": 2,
 	"grid_h": 2,
 	"weight": 6.0,
 	"structural_load": 5.0,
-	"power_draw": 45.0,
+	"power_draw": 40.0,
 	"base_damage": 90.0,
-	"fire_rate": 0.2,
+	"fire_rate": 0.24,
 	"recoil_force": 5.0,
-	"heat_gen": 52.5
+	"heat_gen": 48.0
   },
   {
 	"id": "auto_turret",
@@ -686,9 +689,9 @@
 	"structural_load": 1.5,
 	"power_draw": 10.0,
 	"base_damage": 4.0,
-	"fire_rate": 4.5,
+	"fire_rate": 4.0,
 	"recoil_force": 0.05,
-	"heat_gen": 6.0
+	"heat_gen": 6.5
   },
   {
 	"id": "void_spike",
@@ -701,9 +704,9 @@
 	"grid_h": 1,
 	"weight": 2.0,
 	"structural_load": 2.0,
-	"power_draw": 30.0,
+	"power_draw": 28.0,
 	"base_damage": 50.0,
-	"fire_rate": 0.33,
+	"fire_rate": 0.38,
 	"recoil_force": 2.0,
 	"heat_gen": 22.5
   },
@@ -830,16 +833,16 @@
 	"category": "TEMPORAL",
 	"rarity": "LEGENDARY",
 	"description": "Channels void resonance. Enormous power generation at maximum temporal instability.",
-	"cost": 11,
+	"cost": 12,
 	"grid_w": 1,
 	"grid_h": 1,
 	"weight": 2.0,
 	"structural_load": 2.0,
-	"power_gen": 60.0,
+	"power_gen": 55.0,
 	"heat_gen": 10.0,
 	"hp": 20.0,
 	"power_draw": 15.0,
-	"paradox_rate": 55.0
+	"paradox_rate": 62.0
   },
   {
 	"id": "overload_safeguard",
@@ -847,13 +850,13 @@
 	"category": "AI",
 	"rarity": "UNCOMMON",
 	"description": "AI-managed thermal safety system. Prevents cascading thermal failures.",
-	"cost": 4,
+	"cost": 5,
 	"grid_w": 1,
 	"grid_h": 1,
 	"weight": 0.5,
 	"structural_load": 0.5,
 	"power_draw": 7.0,
-	"heat_reduction": 8.0
+	"heat_reduction": 7.0
   },
   {
 	"id": "repair_drone",

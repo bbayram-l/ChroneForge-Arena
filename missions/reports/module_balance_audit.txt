@@ -1,0 +1,84 @@
+TOTAL 60
+AI|chrono_anchor|UNCOMMON|c3|1c|OK|over:0.0|under:0.45|z:{'value_density': -0.45}
+AI|targeting_matrix|UNCOMMON|c4|1c|OK|over:0.0|under:0.34|z:{'value_density': -0.34}
+AI|overload_safeguard|UNCOMMON|c5|1c|NERF_CANDIDATE|over:2.42|under:0.0|z:{'value_density': 2.42}
+AI|burst_logic|RARE|c5|1c|OK|over:0.0|under:0.13|z:{'value_density': -0.13}
+AI|counter_program|RARE|c5|1c|OK|over:0.0|under:0.41|z:{'value_density': -0.41}
+AI|targeting_jammer|RARE|c5|1c|OK|over:0.0|under:0.41|z:{'value_density': -0.41}
+AI|repair_drone|RARE|c6|1c|OK|over:0.0|under:0.69|z:{'value_density': -0.69}
+DEFENSE|ablative_plating|COMMON|c2|1c|OK|over:1.97|under:0.0|z:{'ehp_pc': 0.92, 'value_density': 1.05}
+DEFENSE|kinetic_plating|COMMON|c3|1c|NERF_CANDIDATE|over:2.44|under:0.0|z:{'ehp_pc': 1.24, 'value_density': 1.2}
+DEFENSE|reactive_armor|UNCOMMON|c4|1c|OK|over:0.0|under:1.6|z:{'ehp_pc': -1.52, 'value_density': -0.07}
+DEFENSE|energy_shield|UNCOMMON|c5|1c|OK|over:0.46|under:0.0|z:{'ehp_pc': 0.43, 'value_density': 0.03}
+DEFENSE|dampening_shell|RARE|c6|1c|OK|over:1.18|under:0.0|z:{'ehp_pc': 0.02, 'value_density': 1.16}
+DEFENSE|reflective_field|RARE|c6|1c|BUFF_CANDIDATE|over:0.0|under:2.71|z:{'ehp_pc': -1.61, 'value_density': -1.1}
+DEFENSE|temporal_barrier|EPIC|c8|1c|OK|over:0.0|under:1.72|z:{'ehp_pc': -0.18, 'value_density': -1.54}
+DEFENSE|fortress_shell|EPIC|c9|2c|OK|over:0.7|under:0.73|z:{'ehp_pc': 0.7, 'value_density': -0.73}
+POWER|micro_reactor|COMMON|c2|1c|OK|over:0.47|under:0.63|z:{'gen_pc': 0.23, 'pdx_pc': -0.63, 'value_density': 0.24}
+POWER|solar_tap|COMMON|c2|1c|BUFF_CANDIDATE|over:0.0|under:2.61|z:{'gen_pc': -1.01, 'pdx_pc': -0.63, 'value_density': -0.97}
+POWER|reactor_core|COMMON|c4|1c|OK|over:2.04|under:0.63|z:{'gen_pc': 1.0, 'pdx_pc': -0.63, 'value_density': 1.03}
+POWER|power_router|UNCOMMON|c3|1c|BUFF_CANDIDATE|over:0.0|under:3.88|z:{'gen_pc': -1.63, 'pdx_pc': -0.63, 'value_density': -1.61}
+POWER|capacitor_bank|UNCOMMON|c4|1c|OK|over:1.69|under:1.18|z:{'gen_pc': -0.55, 'pdx_pc': 1.69, 'value_density': -0.63}
+POWER|fusion_core|RARE|c7|1c|OK|over:2.24|under:0.63|z:{'gen_pc': 1.11, 'pdx_pc': -0.63, 'value_density': 1.13}
+POWER|overcharge_cell|EPIC|c10|1c|NERF_CANDIDATE|over:3.12|under:0.0|z:{'gen_pc': 0.85, 'pdx_pc': 1.46, 'value_density': 0.81}
+STRUCTURAL|carbon_weave|COMMON|c2|1c|OK|over:0.0|under:1.81|z:{'ehp_pc': -0.87, 'cool_pc': -0.38, 'value_density': -0.57}
+STRUCTURAL|light_frame|COMMON|c2|1c|OK|over:0.0|under:1.81|z:{'ehp_pc': -0.87, 'cool_pc': -0.38, 'value_density': -0.57}
+STRUCTURAL|reinforced_frame|COMMON|c4|1c|OK|over:2.1|under:0.38|z:{'ehp_pc': 1.27, 'cool_pc': -0.38, 'value_density': 0.83}
+STRUCTURAL|gyro_stabilizer|UNCOMMON|c3|1c|BUFF_CANDIDATE|over:0.0|under:2.98|z:{'ehp_pc': -0.87, 'cool_pc': -0.38, 'value_density': -1.73}
+STRUCTURAL|shock_bracing|UNCOMMON|c3|1c|OK|over:0.02|under:0.46|z:{'ehp_pc': 0.02, 'cool_pc': -0.38, 'value_density': -0.08}
+STRUCTURAL|blast_plating|UNCOMMON|c4|1c|NERF_CANDIDATE|over:4.0|under:0.33|z:{'ehp_pc': -0.33, 'cool_pc': 2.65, 'value_density': 1.36}
+STRUCTURAL|joint_lock|RARE|c5|1c|OK|over:0.0|under:1.21|z:{'ehp_pc': -0.33, 'cool_pc': -0.38, 'value_density': -0.5}
+STRUCTURAL|armored_chassis|RARE|c6|1c|NERF_CANDIDATE|over:3.23|under:0.38|z:{'ehp_pc': 1.98, 'cool_pc': -0.38, 'value_density': 1.25}
+TEMPORAL|future_sight|UNCOMMON|c4|1c|OK|over:0.0|under:2.11|z:{'pdx_pc': -1.52, 'value_density': -0.6}
+TEMPORAL|rewind_shield|UNCOMMON|c5|1c|OK|over:0.0|under:1.61|z:{'pdx_pc': -1.43, 'value_density': -0.18}
+TEMPORAL|stasis_matrix|RARE|c6|1c|OK|over:0.0|under:1.0|z:{'pdx_pc': -0.66, 'value_density': -0.33}
+TEMPORAL|pre_fire_snapshot|RARE|c7|1c|OK|over:0.0|under:1.12|z:{'pdx_pc': -0.36, 'value_density': -0.76}
+TEMPORAL|entropy_field|EPIC|c8|1c|OK|over:0.4|under:0.87|z:{'pdx_pc': 0.4, 'value_density': -0.87}
+TEMPORAL|time_dilation|EPIC|c9|1c|OK|over:0.81|under:0.2|z:{'pdx_pc': 0.81, 'value_density': -0.2}
+TEMPORAL|timeline_split|EPIC|c9|2c|OK|over:0.52|under:0.53|z:{'pdx_pc': 0.52, 'value_density': -0.53}
+TEMPORAL|paradox_reactor|LEGENDARY|c10|4c|OK|over:1.7|under:0.0|z:{'pdx_pc': 0.62, 'value_density': 1.08}
+TEMPORAL|void_resonator|LEGENDARY|c12|1c|NERF_CANDIDATE|over:4.0|under:0.0|z:{'pdx_pc': 1.61, 'value_density': 2.38}
+THERMAL|heat_sink|COMMON|c2|1c|OK|over:0.0|under:0.29|z:{'cool_pc': -0.26, 'value_density': -0.03}
+THERMAL|thermal_wick|COMMON|c2|1c|BUFF_CANDIDATE|over:0.0|under:2.67|z:{'cool_pc': -1.36, 'value_density': -1.31}
+THERMAL|liquid_coolant|UNCOMMON|c4|1c|OK|over:0.0|under:2.19|z:{'cool_pc': -0.99, 'value_density': -1.2}
+THERMAL|phase_cooler|UNCOMMON|c4|1c|OK|over:0.0|under:0.32|z:{'cool_pc': -0.26, 'value_density': -0.06}
+THERMAL|radiator_loop|UNCOMMON|c4|1c|OK|over:0.11|under:0.0|z:{'cool_pc': 0.1, 'value_density': 0.01}
+THERMAL|cryo_injector|RARE|c6|1c|OK|over:1.89|under:0.0|z:{'cool_pc': 1.08, 'value_density': 0.81}
+THERMAL|overdrive_vent|RARE|c6|1c|NERF_CANDIDATE|over:3.47|under:0.0|z:{'cool_pc': 1.69, 'value_density': 1.78}
+WEAPON|pulse_cannon|COMMON|c3|1c|NERF_CANDIDATE|over:3.7|under:0.0|z:{'dps_pc': 1.22, 'dps_pd': 0.99, 'heat_pdps': -0.52, 'value_density': 0.97}
+WEAPON|scatter_burst|COMMON|c3|1c|NERF_CANDIDATE|over:5.41|under:0.0|z:{'dps_pc': 1.11, 'dps_pd': 1.63, 'heat_pdps': -0.94, 'value_density': 1.72}
+WEAPON|emp_burst|UNCOMMON|c3|1c|BUFF_CANDIDATE|over:1.51|under:6.37|z:{'dps_pc': -2.34, 'dps_pd': -2.05, 'heat_pdps': -1.51, 'value_density': -1.99}
+WEAPON|auto_turret|UNCOMMON|c4|1c|NERF_CANDIDATE|over:2.97|under:0.0|z:{'dps_pc': 0.25, 'dps_pd': 0.9, 'heat_pdps': -0.78, 'value_density': 1.05}
+WEAPON|shard_cannon|UNCOMMON|c4|1c|OK|over:1.93|under:0.0|z:{'dps_pc': 0.25, 'dps_pd': 0.41, 'heat_pdps': -0.66, 'value_density': 0.61}
+WEAPON|twin_blaster|UNCOMMON|c4|1c|NERF_CANDIDATE|over:2.45|under:0.0|z:{'dps_pc': 0.9, 'dps_pd': 0.58, 'heat_pdps': -0.43, 'value_density': 0.54}
+WEAPON|missile_pod|UNCOMMON|c5|1c|OK|over:0.0|under:2.39|z:{'dps_pc': -0.78, 'dps_pd': -0.67, 'heat_pdps': 0.29, 'value_density': -0.64}
+WEAPON|arc_lance|RARE|c6|1c|OK|over:0.25|under:1.5|z:{'dps_pc': 0.25, 'dps_pd': -0.04, 'heat_pdps': 0.74, 'value_density': -0.72}
+WEAPON|gravity_mine|RARE|c6|1c|OK|over:0.0|under:1.77|z:{'dps_pc': -0.83, 'dps_pd': -0.33, 'heat_pdps': 0.42, 'value_density': -0.19}
+WEAPON|plasma_saw|RARE|c6|1c|NERF_CANDIDATE|over:4.38|under:0.0|z:{'dps_pc': 1.63, 'dps_pd': 1.34, 'heat_pdps': -0.33, 'value_density': 1.08}
+WEAPON|railgun|RARE|c6|2c|BUFF_CANDIDATE|over:0.0|under:2.96|z:{'dps_pc': -0.39, 'dps_pd': -0.87, 'heat_pdps': 1.19, 'value_density': -0.51}
+WEAPON|echo_cannon|RARE|c7|1c|OK|over:0.61|under:0.81|z:{'dps_pc': -0.12, 'dps_pd': -0.04, 'heat_pdps': -0.61, 'value_density': -0.66}
+WEAPON|void_spike|RARE|c7|1c|BUFF_CANDIDATE|over:0.0|under:3.26|z:{'dps_pc': -0.58, 'dps_pd': -0.8, 'heat_pdps': 0.63, 'value_density': -1.26}
+WEAPON|siege_cannon|EPIC|c8|4c|BUFF_CANDIDATE|over:0.0|under:4.14|z:{'dps_pc': -0.59, 'dps_pd': -1.05, 'heat_pdps': 2.5, 'value_density': -0.0}
+NERF_CANDIDATES 12
+scatter_burst|WEAPON|over:5.41|z:{'dps_pc': 1.11, 'dps_pd': 1.63, 'heat_pdps': -0.94, 'value_density': 1.72}
+plasma_saw|WEAPON|over:4.38|z:{'dps_pc': 1.63, 'dps_pd': 1.34, 'heat_pdps': -0.33, 'value_density': 1.08}
+blast_plating|STRUCTURAL|over:4.0|z:{'ehp_pc': -0.33, 'cool_pc': 2.65, 'value_density': 1.36}
+void_resonator|TEMPORAL|over:4.0|z:{'pdx_pc': 1.61, 'value_density': 2.38}
+pulse_cannon|WEAPON|over:3.7|z:{'dps_pc': 1.22, 'dps_pd': 0.99, 'heat_pdps': -0.52, 'value_density': 0.97}
+overdrive_vent|THERMAL|over:3.47|z:{'cool_pc': 1.69, 'value_density': 1.78}
+armored_chassis|STRUCTURAL|over:3.23|z:{'ehp_pc': 1.98, 'cool_pc': -0.38, 'value_density': 1.25}
+overcharge_cell|POWER|over:3.12|z:{'gen_pc': 0.85, 'pdx_pc': 1.46, 'value_density': 0.81}
+auto_turret|WEAPON|over:2.97|z:{'dps_pc': 0.25, 'dps_pd': 0.9, 'heat_pdps': -0.78, 'value_density': 1.05}
+twin_blaster|WEAPON|over:2.45|z:{'dps_pc': 0.9, 'dps_pd': 0.58, 'heat_pdps': -0.43, 'value_density': 0.54}
+kinetic_plating|DEFENSE|over:2.44|z:{'ehp_pc': 1.24, 'value_density': 1.2}
+overload_safeguard|AI|over:2.42|z:{'value_density': 2.42}
+BUFF_CANDIDATES 9
+emp_burst|WEAPON|under:6.37|z:{'dps_pc': -2.34, 'dps_pd': -2.05, 'heat_pdps': -1.51, 'value_density': -1.99}
+siege_cannon|WEAPON|under:4.14|z:{'dps_pc': -0.59, 'dps_pd': -1.05, 'heat_pdps': 2.5, 'value_density': -0.0}
+power_router|POWER|under:3.88|z:{'gen_pc': -1.63, 'pdx_pc': -0.63, 'value_density': -1.61}
+void_spike|WEAPON|under:3.26|z:{'dps_pc': -0.58, 'dps_pd': -0.8, 'heat_pdps': 0.63, 'value_density': -1.26}
+gyro_stabilizer|STRUCTURAL|under:2.98|z:{'ehp_pc': -0.87, 'cool_pc': -0.38, 'value_density': -1.73}
+railgun|WEAPON|under:2.96|z:{'dps_pc': -0.39, 'dps_pd': -0.87, 'heat_pdps': 1.19, 'value_density': -0.51}
+reflective_field|DEFENSE|under:2.71|z:{'ehp_pc': -1.61, 'value_density': -1.1}
+thermal_wick|THERMAL|under:2.67|z:{'cool_pc': -1.36, 'value_density': -1.31}
+solar_tap|POWER|under:2.61|z:{'gen_pc': -1.01, 'pdx_pc': -0.63, 'value_density': -0.97}

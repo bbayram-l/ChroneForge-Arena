@@ -1,9 +1,1 @@
 res://scenes/MainMenu.tscn
-res://scripts/ui/ShopPanel.gd
-res://scripts/ui/Main.gd
-res://scripts/combat/CombatEngine.gd
-res://scripts/grid/MechGrid.gd
-res://scripts/ui/MainMenu.gd
-res://data/modules.json
-res://data/patchnotes.txt
-res://scripts/ui/MechGridView.gd
