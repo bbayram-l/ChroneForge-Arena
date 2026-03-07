@@ -95,8 +95,7 @@ func _build_card(mod: Module, index: int) -> Panel:
 	var img_bg := ColorRect.new()
 	img_bg.position      = Vector2(6.0, 6.0)
 	img_bg.size          = Vector2(float(CARD_W - 12), float(IMAGE_H))
-	img_bg.color         = cat_col
-	img_bg.modulate.a    = 0.22
+	img_bg.color         = Color(cat_col.r, cat_col.g, cat_col.b, 0.22)
 	img_bg.mouse_filter  = MOUSE_FILTER_IGNORE
 	img_bg.clip_contents = true
 	card.add_child(img_bg)
