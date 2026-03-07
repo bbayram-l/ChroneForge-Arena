@@ -256,8 +256,7 @@ func _get_module_texture(module_id: String) -> Texture2D:
 	var path: String = MODULE_ART_PATH_FMT % module_id
 	var tex: Texture2D = null
 	if ResourceLoader.exists(path):
-		var loaded: Texture2D = load(path) as Texture2D
-		tex = _crop_texture_visible_bounds(loaded)
+		tex = load(path) as Texture2D
 	_module_texture_cache[module_id] = tex
 	return tex
 
@@ -284,55 +283,6 @@ func _build_card_art_fallback(mod: Module) -> Control:
 	wrap.add_child(icon)
 
 	return wrap
-
-func _crop_texture_visible_bounds(tex: Texture2D) -> Texture2D:
-	if tex == null:
-		return null
-	var img: Image = tex.get_image()
-	if img == null or img.is_empty():
-		return tex
-	img.convert(Image.FORMAT_RGBA8)
-	var w: int = img.get_width()
-	var h: int = img.get_height()
-	var min_x: int = w
-	var min_y: int = h
-	var max_x: int = -1
-	var max_y: int = -1
-	var c0: Color = img.get_pixel(0, 0)
-	var c1: Color = img.get_pixel(maxi(0, w - 1), 0)
-	var c2: Color = img.get_pixel(0, maxi(0, h - 1))
-	var c3: Color = img.get_pixel(maxi(0, w - 1), maxi(0, h - 1))
-	var bg: Color = Color(
-		(c0.r + c1.r + c2.r + c3.r) * 0.25,
-		(c0.g + c1.g + c2.g + c3.g) * 0.25,
-		(c0.b + c1.b + c2.b + c3.b) * 0.25,
-		(c0.a + c1.a + c2.a + c3.a) * 0.25
-	)
-	for y in range(h):
-		for x in range(w):
-			var p: Color = img.get_pixel(x, y)
-			var d: float = absf(p.r - bg.r) + absf(p.g - bg.g) + absf(p.b - bg.b) + absf(p.a - bg.a)
-			if p.a > 0.03 and d > 0.18:
-				min_x = mini(min_x, x)
-				min_y = mini(min_y, y)
-				max_x = maxi(max_x, x)
-				max_y = maxi(max_y, y)
-	if max_x < min_x or max_y < min_y:
-		for y in range(h):
-			for x in range(w):
-				if img.get_pixel(x, y).a > 0.03:
-					min_x = mini(min_x, x)
-					min_y = mini(min_y, y)
-					max_x = maxi(max_x, x)
-					max_y = maxi(max_y, y)
-	if max_x < min_x or max_y < min_y:
-		return tex
-	var rect := Rect2i(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
-	if rect.size.x <= 0 or rect.size.y <= 0:
-		return tex
-	var cropped := Image.create(rect.size.x, rect.size.y, false, Image.FORMAT_RGBA8)
-	cropped.blit_rect(img, rect, Vector2i.ZERO)
-	return ImageTexture.create_from_image(cropped)
 
 
 func _apply_card_style(card: Panel, rarity: Module.Rarity, selected: bool, hovered: bool) -> void:

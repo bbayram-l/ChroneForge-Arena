@@ -69,6 +69,7 @@ var _struct_lines: Array     = []           # [{a,b,c,w}]
 var _struct_rivets: Array    = []           # [{p,r}]
 var _module_texture_cache: Dictionary = {}  # module_id -> Texture2D|null
 var _art_mask_material: ShaderMaterial = null
+var _art_overlay_material: ShaderMaterial = null
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -174,11 +175,13 @@ func _build() -> void:
 			art_fallback.mouse_filter = MOUSE_FILTER_IGNORE
 			art_frame.add_child(art_fallback)
 
-			for mask_name: String in ["MaskTL", "MaskTR", "MaskBL", "MaskBR"]:
-				var corner_mask := Polygon2D.new()
-				corner_mask.name = mask_name
-				corner_mask.color = Color(0.0, 0.0, 0.0, 0.0)
-				art_frame.add_child(corner_mask)
+			var art_mask := ColorRect.new()
+			art_mask.name = "ArtMaskOverlay"
+			art_mask.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			art_mask.color = Color(0.0, 0.0, 0.0, 0.0)
+			art_mask.mouse_filter = MOUSE_FILTER_IGNORE
+			art_mask.material = _get_art_overlay_material()
+			art_frame.add_child(art_mask)
 
 			var art_edge := Panel.new()
 			art_edge.name = "ArtEdge"
@@ -882,10 +885,7 @@ func _redraw_cell(pos: Vector2i) -> void:
 	var art_frame: Panel = panel.get_node("OuterFrame/InnerPlate/ArtFrame") as Panel
 	var art: TextureRect = panel.get_node("OuterFrame/InnerPlate/ArtFrame/Art") as TextureRect
 	var art_fallback: Label = panel.get_node("OuterFrame/InnerPlate/ArtFrame/ArtFallback") as Label
-	var mask_tl: Polygon2D = panel.get_node("OuterFrame/InnerPlate/ArtFrame/MaskTL") as Polygon2D
-	var mask_tr: Polygon2D = panel.get_node("OuterFrame/InnerPlate/ArtFrame/MaskTR") as Polygon2D
-	var mask_bl: Polygon2D = panel.get_node("OuterFrame/InnerPlate/ArtFrame/MaskBL") as Polygon2D
-	var mask_br: Polygon2D = panel.get_node("OuterFrame/InnerPlate/ArtFrame/MaskBR") as Polygon2D
+	var art_mask: ColorRect = panel.get_node("OuterFrame/InnerPlate/ArtFrame/ArtMaskOverlay") as ColorRect
 	var art_edge: Panel = panel.get_node("OuterFrame/InnerPlate/ArtFrame/ArtEdge") as Panel
 	var info_bg: Panel = panel.get_node("OuterFrame/InnerPlate/InfoBg") as Panel
 	var label: Label = panel.get_node("OuterFrame/InnerPlate/InfoLabel") as Label
@@ -924,7 +924,7 @@ func _redraw_cell(pos: Vector2i) -> void:
 
 	_apply_hybrid_style(outer_frame, inner_plate, final_color, overlay_border, overlay_border_w)
 	_apply_art_frame_style(art_frame, final_color)
-	_apply_art_corner_masks(art_frame, mask_tl, mask_tr, mask_bl, mask_br, final_color)
+	_apply_art_mask_overlay(art_mask, final_color)
 	_apply_art_edge_style(art_edge, final_color)
 	if cell.is_empty():
 		if art != null:
@@ -1090,26 +1090,10 @@ func _apply_art_frame_style(art_frame: Panel, color: Color) -> void:
 	art_style.border_width_bottom = 0
 	art_frame.add_theme_stylebox_override("panel", art_style)
 
-func _apply_art_corner_masks(art_frame: Panel, mask_tl: Polygon2D, mask_tr: Polygon2D, mask_bl: Polygon2D, mask_br: Polygon2D, color: Color) -> void:
-	if art_frame == null:
+func _apply_art_mask_overlay(art_mask: ColorRect, color: Color) -> void:
+	if art_mask == null:
 		return
-	var cut: float = float(maxi(2, CELL_INNER_CHAMFER - 1))
-	var w: float = art_frame.size.x
-	var h: float = art_frame.size.y
-	var mask_col: Color = color.darkened(0.34)
-
-	if mask_tl != null:
-		mask_tl.polygon = PackedVector2Array([Vector2(0.0, 0.0), Vector2(cut, 0.0), Vector2(0.0, cut)])
-		mask_tl.color = mask_col
-	if mask_tr != null:
-		mask_tr.polygon = PackedVector2Array([Vector2(w, 0.0), Vector2(w - cut, 0.0), Vector2(w, cut)])
-		mask_tr.color = mask_col
-	if mask_bl != null:
-		mask_bl.polygon = PackedVector2Array([Vector2(0.0, h), Vector2(cut, h), Vector2(0.0, h - cut)])
-		mask_bl.color = mask_col
-	if mask_br != null:
-		mask_br.polygon = PackedVector2Array([Vector2(w, h), Vector2(w - cut, h), Vector2(w, h - cut)])
-		mask_br.color = mask_col
+	art_mask.color = color.darkened(0.34)
 
 func _apply_art_edge_style(art_edge: Panel, color: Color) -> void:
 	if art_edge == null:
@@ -1147,6 +1131,25 @@ func _get_art_mask_material() -> ShaderMaterial:
 	_art_mask_material = ShaderMaterial.new()
 	_art_mask_material.shader = shader
 	return _art_mask_material
+
+func _get_art_overlay_material() -> ShaderMaterial:
+	if _art_overlay_material != null:
+		return _art_overlay_material
+	var shader := Shader.new()
+	shader.code = "shader_type canvas_item;\n" \
+		+ "uniform float cut = 0.16;\n" \
+		+ "void fragment() {\n" \
+		+ "    vec4 col = COLOR;\n" \
+		+ "    bool outside = false;\n" \
+		+ "    if ((UV.x + UV.y) < cut) outside = true;\n" \
+		+ "    if (((1.0 - UV.x) + UV.y) < cut) outside = true;\n" \
+		+ "    if ((UV.x + (1.0 - UV.y)) < cut) outside = true;\n" \
+		+ "    if (((1.0 - UV.x) + (1.0 - UV.y)) < cut) outside = true;\n" \
+		+ "    COLOR = outside ? col : vec4(col.rgb, 0.0);\n" \
+		+ "}\n"
+	_art_overlay_material = ShaderMaterial.new()
+	_art_overlay_material.shader = shader
+	return _art_overlay_material
 
 func _apply_style(panel: Panel, color: Color, border: Color = Color.TRANSPARENT, border_w: int = 1) -> void:
 	var style := StyleBoxFlat.new()

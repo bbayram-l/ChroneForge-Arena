@@ -45,10 +45,11 @@ tmp_autoplay_dense.json::JSON::-1::1772903372::0::1::::<><><>0<>0<><>::
 tmp_grid_click_sanity.json::JSON::-1::1772900476::0::1::::<><><>0<>0<><>::
 tmp_main_scene_cables.json::JSON::-1::1772896807::0::1::::<><><>0<>0<><>::
 ::res://missions/reports/::1772903385
-OVERALL.md::TextFile::-1::1772904380::0::1::::<><><>0<>0<><>::
-::res://missions/reports/codex_autoplay_dense_view/::1772904380
-after_autoplay.png::CompressedTexture2D::7556941598518475958::1772904380::1772905210::1::::<><><>0<>0<>424cb1435691c1faffa7e730914d7551<>res://.godot/imported/after_autoplay.png-a239e117fb078ddc452c0e7b749fa01a.ctex::
+OVERALL.md::TextFile::-1::1772905363::0::1::::<><><>0<>0<><>::
+::res://missions/reports/codex_autoplay_dense_view/::1772905377
+after_autoplay.png::CompressedTexture2D::7556941598518475958::1772905363::1772905400::1::::<><><>0<>0<>424cb1435691c1faffa7e730914d7551<>res://.godot/imported/after_autoplay.png-a239e117fb078ddc452c0e7b749fa01a.ctex::
 after_autoplay_crop.png::CompressedTexture2D::693754656057361644::1772904297::1772904374::1::::<><><>0<>0<>df81c0e7ca906e199d5b5f245255a2f1<>res://.godot/imported/after_autoplay_crop.png-e50b909b93d078fbaae7b61c2c16ab1d.ctex::
+after_autoplay_crop_zoom2.png::CompressedTexture2D::4620030549735298646::1772905377::1772905400::1::::<><><>0<>0<>8a9e3839ba5211e608b5922026ad891d<>res://.godot/imported/after_autoplay_crop_zoom2.png-51303f14948defa20f1ee12ca5a4a2be.ctex::
 after_autoplay_crop_zoom.png::CompressedTexture2D::1923940066383992787::1772904314::1772904374::1::::<><><>0<>0<>b8bf99636483c3259d63a35c20266bb2<>res://.godot/imported/after_autoplay_crop_zoom.png-a76c362173fc65c055006a7178285470.ctex::
 report-2026-03-07T17-09-47.md::TextFile::-1::1772903387::0::1::::<><><>0<>0<><>::
 report-2026-03-07T17-11-06.md::TextFile::-1::1772903466::0::1::::<><><>0<>0<><>::
@@ -57,6 +58,7 @@ report-2026-03-07T17-13-21.md::TextFile::-1::1772903601::0::1::::<><><>0<>0<><>:
 report-2026-03-07T17-14-05.md::TextFile::-1::1772903645::0::1::::<><><>0<>0<><>::
 report-2026-03-07T17-24-41.md::TextFile::-1::1772904281::0::1::::<><><>0<>0<><>::
 report-2026-03-07T17-26-20.md::TextFile::-1::1772904380::0::1::::<><><>0<>0<><>::
+report-2026-03-07T17-42-43.md::TextFile::-1::1772905363::0::1::::<><><>0<>0<><>::
 ::res://missions/reports/codex_autoplay_smoke/::1772894468
 after_autoplay.png::CompressedTexture2D::475193045527306427::1772894374::1772894468::1::::<><><>0<>0<>c2d46b2019907ab46cca83219e3e11c6<>res://.godot/imported/after_autoplay.png-aeb9da42bc47d652af64a7cd90c0bb3d.ctex::
 report-2026-03-07T14-39-02.md::TextFile::-1::1772894342::0::1::::<><><>0<>0<><>::
@@ -150,8 +152,8 @@ SynergySystem.gd::GDScript::638069469213295524::1772633610::0::1::::SynergySyste
 HudPanel.gd::GDScript::1642403394775690142::1772816118::0::1::::HudPanel<>Control<><>0<>0<><>::
 Main.gd::GDScript::5247374232760039997::1772894216::0::1::::<>Node<><>0<>0<><>::
 MainMenu.gd::GDScript::38277752529163036::1772894183::0::1::::<>Node<><>0<>0<><>::
-MechGridView.gd::GDScript::4184306168772663963::1772904365::0::1::::MechGridView<>Control<><>0<>0<><>::
-ShopPanel.gd::GDScript::2588417146671706685::1772904245::0::1::::ShopPanel<>Control<><>0<>0<><>::
+MechGridView.gd::GDScript::4184306168772663963::1772905327::0::1::::MechGridView<>Control<><>0<>0<><>::
+ShopPanel.gd::GDScript::2588417146671706685::1772905348::0::1::::ShopPanel<>Control<><>0<>0<><>::
 ::res://steam/::1772748746
 ::res://tools/::1772813742
 module_prompts.json::JSON::-1::1772813742::0::1::::<><><>0<>0<><>::
