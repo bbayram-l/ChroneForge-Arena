@@ -56,16 +56,26 @@ var _replay_tick:           int        = 0
 var _replay_speed_fast:     bool       = false
 var _replay_states:         Dictionary = {}   # tick(int) → state dict
 var _replay_events_by_tick: Dictionary = {}   # tick(int) → Array[Dictionary]
+var _run_seed:              int        = 0
+var _run_rng:               RandomNumberGenerator = RandomNumberGenerator.new()
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────
 
 func _ready() -> void:
 	player_grid = MechGrid.new("player")
 	enemy_grid  = MechGrid.new("enemy")
-	shop        = ShopSystem.new(ModuleRegistry.all_modules, randi())
+	_run_seed = _new_run_seed(17)
+	_run_rng.seed = _run_seed
+	shop = ShopSystem.new(ModuleRegistry.all_modules, int(_run_rng.randi()))
 
 	_setup_ui()
 	_archetype_panel.visible = true
+
+func _new_run_seed(salt: int = 0) -> int:
+	var unix_sec: int = int(Time.get_unix_time_from_system())
+	var tick_ms: int = int(Time.get_ticks_msec())
+	var rng_seed: int = absi(hash("%d:%d:%d:%d" % [unix_sec, tick_ms, GameState.mmr, salt]))
+	return maxi(1, rng_seed)
 
 func _setup_ui() -> void:
 	_canvas = CanvasLayer.new()
@@ -1006,7 +1016,9 @@ func _on_archetype_selected(archetype: String) -> void:
 	enemy_grid  = MechGrid.new("enemy")
 	player_grid_view.refresh(player_grid)
 	enemy_grid_view.refresh(enemy_grid)
-	shop = ShopSystem.new(ModuleRegistry.all_modules, randi())
+	_run_seed = _new_run_seed(hash(archetype))
+	_run_rng.seed = _run_seed
+	shop = ShopSystem.new(ModuleRegistry.all_modules, int(_run_rng.randi()))
 
 	GameState.start_run()
 	GameLogger.log_run_start(archetype)
@@ -1110,7 +1122,10 @@ func _start_combat() -> void:
 
 	# Ghost ladder: 30% chance to face a previously saved opponent build
 	var ghost := _try_load_ghost(GameState.current_round)
-	if ghost != null and GameState.current_round >= 5 and randi() % 100 < 30:
+	var ghost_roll_rng := RandomNumberGenerator.new()
+	var ghost_rng_seed: int = combat_seed ^ _run_seed ^ 1013904242
+	ghost_roll_rng.seed = ghost_rng_seed
+	if ghost != null and GameState.current_round >= 5 and ghost_roll_rng.randi() % 100 < 30:
 		enemy_grid = ghost
 		print("[PvP] Using ghost grid for round %d" % GameState.current_round)
 	else:

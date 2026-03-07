@@ -100,30 +100,43 @@ func get_module_position(mod: Module) -> Vector2i:
 
 func serialize() -> Dictionary:
 	var placed: Array = []
+	var seen: Dictionary = {}
 	for y in range(GRID_HEIGHT):
 		for x in range(GRID_WIDTH):
 			var cell: GridCell = cells[y][x]
 			if not cell.is_empty():
-				var already_logged := false
-				for entry in placed:
-					if entry.module_id == cell.module.id and entry.pos == [x, y]:
-						already_logged = true
-						break
-				if not already_logged:
-					placed.append({"pos": [x, y], "module_id": cell.module.id, "star_level": cell.module.star_level})
+				var key := cell.module.get_instance_id()
+				if seen.has(key):
+					continue
+				seen[key] = true
+				placed.append({
+					"pos": [x, y],
+					"module_id": cell.module.id,
+					"star_level": cell.module.star_level,
+				})
 	return {"owner": owner_id, "cells": placed}
 
 static func deserialize(data: Dictionary) -> MechGrid:
 	var grid := MechGrid.new(data.get("owner", ""))
-	for entry in data.get("cells", []):
-		var pos := Vector2i(entry.pos[0], entry.pos[1])
-		var mod: Module = ModuleRegistry.get_module(entry.module_id)
-		if mod != null:
-			grid.place_module(pos, mod)
-			# Restore star upgrades (place_module already duplicated the module)
-			var star: int = entry.get("star_level", 1)
-			var cell := grid.get_cell(pos)
-			if cell != null:
-				for _i in range(star - 1):
-					cell.module.upgrade()
+	for raw_entry in data.get("cells", []):
+		if not (raw_entry is Dictionary):
+			continue
+		var entry: Dictionary = raw_entry
+		var raw_pos: Array = entry.get("pos", [])
+		if raw_pos.size() < 2:
+			continue
+		var pos := Vector2i(int(raw_pos[0]), int(raw_pos[1]))
+		var module_id := String(entry.get("module_id", ""))
+		var mod: Module = ModuleRegistry.get_module(module_id)
+		if mod == null:
+			continue
+		if not grid.place_module(pos, mod):
+			continue
+		# Restore star upgrades (place_module already duplicated the module).
+		var star: int = clampi(int(entry.get("star_level", 1)), 1, Module.MAX_STARS)
+		var cell := grid.get_cell(pos)
+		if cell == null or cell.is_empty():
+			continue
+		for _i in range(star - 1):
+			cell.module.upgrade()
 	return grid

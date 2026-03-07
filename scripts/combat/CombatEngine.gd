@@ -41,7 +41,7 @@ var tick_count: int = 0
 var event_log:  Array[Dictionary] = []
 var rng:        RandomNumberGenerator
 
-# Weapon cooldown trackers: module.id → remaining seconds
+# Weapon cooldown trackers: module instance key → remaining seconds
 var _p_cooldowns: Dictionary = {}
 var _e_cooldowns: Dictionary = {}
 
@@ -49,7 +49,7 @@ var _e_cooldowns: Dictionary = {}
 var _p_burst_ready: Dictionary = {}
 var _e_burst_ready: Dictionary = {}
 
-# EMP lock timers: module.id → remaining lock seconds
+# EMP lock timers: module instance key → remaining lock seconds
 var _p_emp_locks: Dictionary = {}
 var _e_emp_locks: Dictionary = {}
 
@@ -363,29 +363,30 @@ func _advance_cooldowns(map: Dictionary, delta: float) -> void:
 
 func _release_emp_locks(grid: MechGrid, locks: Dictionary) -> void:
 	var expired: Array = []
-	for mod_id in locks.keys():
-		if locks[mod_id] <= 0.0:
-			expired.append(mod_id)
-	for mod_id in expired:
-		var mod := _find_module(grid, mod_id)
+	for lock_key in locks.keys():
+		if locks[lock_key] <= 0.0:
+			expired.append(lock_key)
+	for lock_key in expired:
+		var mod := _find_module_by_key(grid, int(lock_key))
 		if mod != null:
 			mod.disabled = false
-			_log("emp_unlock", grid == player_grid, {"module": mod_id})
-		locks.erase(mod_id)
+			_log("emp_unlock", grid == player_grid, {"module": mod.id})
+		locks.erase(lock_key)
 
 # ── Weapon firing ──────────────────────────────────────────────────────────
 
 func _fire_weapon(weapon: Module, is_player: bool) -> void:
 	var wid := weapon.id
+	var wkey := _module_key(weapon)
 
 	# Init cooldown slot
-	if not _p_cooldowns.has(wid) and is_player:
-		_p_cooldowns[wid] = 0.0
-	if not _e_cooldowns.has(wid) and not is_player:
-		_e_cooldowns[wid] = 0.0
+	if not _p_cooldowns.has(wkey) and is_player:
+		_p_cooldowns[wkey] = 0.0
+	if not _e_cooldowns.has(wkey) and not is_player:
+		_e_cooldowns[wkey] = 0.0
 
 	var cds := _p_cooldowns if is_player else _e_cooldowns
-	if cds[wid] > 0.0:
+	if cds[wkey] > 0.0:
 		return
 
 	var grid      := player_grid if is_player else enemy_grid
@@ -401,7 +402,7 @@ func _fire_weapon(weapon: Module, is_player: bool) -> void:
 
 	# EMP lock check
 	var emp_locks := _p_emp_locks if is_player else _e_emp_locks
-	if emp_locks.get(wid, 0.0) > 0.0:
+	if emp_locks.get(wkey, 0.0) > 0.0:
 		return
 
 	# Build modifiers — per-cell efficiency applies the adjacency bonus
@@ -472,10 +473,10 @@ func _fire_weapon(weapon: Module, is_player: bool) -> void:
 
 	# Reset cooldown
 	var base_cd := 1.0 / weapon.fire_rate if weapon.fire_rate > 0.0 else 9999.0
-	cds[wid] = base_cd * (2.0 if burst else 1.0)
-	# TEMPORAL_ASSASSIN: temporal weapons fire 15% faster
-	if is_player and GameState.archetype == "TEMPORAL_ASSASSIN" and weapon.category == Module.Category.TEMPORAL:
-		cds[wid] *= 0.85
+	cds[wkey] = base_cd * (2.0 if burst else 1.0)
+	# TEMPORAL_ASSASSIN: weapons with paradox output fire 15% faster.
+	if is_player and GameState.archetype == "TEMPORAL_ASSASSIN" and weapon.paradox_rate > 0.0:
+		cds[wkey] *= 0.85
 
 	# emp_burst special: lock one random opponent module for 3 s, deal no direct damage
 	if wid == "emp_burst":
@@ -483,11 +484,11 @@ func _fire_weapon(weapon: Module, is_player: bool) -> void:
 		var opp_locks := _e_emp_locks if is_player else _p_emp_locks
 		var candidates: Array[Module] = []
 		for mod in opp_grid.get_all_modules():
-			if not mod.disabled and opp_locks.get(mod.id, 0.0) <= 0.0:
+			if not mod.disabled and opp_locks.get(_module_key(mod), 0.0) <= 0.0:
 				candidates.append(mod)
 		if not candidates.is_empty():
 			var target: Module = candidates[rng.randi() % candidates.size()]
-			opp_locks[target.id] = 3.0
+			opp_locks[_module_key(target)] = 3.0
 			target.disabled = true
 			_log("emp_lock", is_player, {"module": target.id})
 		return
@@ -630,11 +631,11 @@ func _on_joint_lock_absorbed(mod: Module, is_player: bool) -> void:
 	var opp_locks := _e_emp_locks if is_player else _p_emp_locks
 	var candidates: Array[Module] = []
 	for m: Module in opp_grid.get_all_modules():
-		if not m.disabled and opp_locks.get(m.id, 0.0) <= 0.0:
+		if not m.disabled and opp_locks.get(_module_key(m), 0.0) <= 0.0:
 			candidates.append(m)
 	if not candidates.is_empty():
 		var target: Module = candidates[rng.randi() % candidates.size()]
-		opp_locks[target.id] = 3.0
+		opp_locks[_module_key(target)] = 3.0
 		target.disabled = true
 		_log("emp_lock", is_player, {"module": target.id})
 
@@ -687,9 +688,12 @@ static func _has_module(grid: MechGrid, module_id: String) -> bool:
 			return true
 	return false
 
-static func _find_module(grid: MechGrid, module_id: String) -> Module:
+static func _module_key(mod: Module) -> int:
+	return int(mod.get_instance_id())
+
+static func _find_module_by_key(grid: MechGrid, module_key: int) -> Module:
 	for mod in grid.get_all_modules():
-		if mod.id == module_id:
+		if _module_key(mod) == module_key:
 			return mod
 	return null
 
