@@ -1,0 +1,19 @@
+[
+  {
+    "id": "codex_grid_click_sanity",
+    "name": "Codex: Grid Click Sanity",
+    "goal": "Ensure grid interactions still work after cable draw-order update",
+    "estimated_time_sec": 10,
+    "tier_required": 2,
+    "steps": [
+      {"action": "call_method", "node": "MainMenu", "method": "_on_play", "args": []},
+      {"action": "wait", "ms": 900},
+      {"action": "call_method", "node": "Main", "method": "_on_archetype_selected", "args": ["FORTRESS_STABILIZER"]},
+      {"action": "wait", "ms": 400},
+      {"action": "grid_click", "grid": "player", "x": 2, "y": 2},
+      {"action": "grid_click", "grid": "player", "x": 3, "y": 2},
+      {"action": "check_errors", "label": "grid_click_errors"},
+      {"action": "runtime_info"}
+    ]
+  }
+]

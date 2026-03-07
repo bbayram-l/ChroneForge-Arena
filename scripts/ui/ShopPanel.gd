@@ -12,6 +12,7 @@ const CARD_H:          int   = 164
 const GAP:             int   = 8
 const IMAGE_H:         int   = 56
 const DRAG_THRESHOLD:  float = 8.0
+const MODULE_ART_PATH_FMT: String = "res://assets/modules/%s.png"
 
 const RARITY_COLORS: Dictionary = {
 	Module.Rarity.COMMON:    Color("282828"),
@@ -27,6 +28,7 @@ var _offers:        Array[Module]     = []
 var _player_grid:   MechGrid          = null
 var _cost_labels:   Dictionary        = {}   # Module → Label
 var _hover_mod:     Module            = null
+var _module_texture_cache: Dictionary = {}   # module_id -> Texture2D|null
 
 # Drag / click state
 var _pressed_mod:      Module  = null
@@ -130,12 +132,12 @@ func _build_card(mod: Module, index: int) -> Panel:
 	img_bg.clip_contents = true
 	card.add_child(img_bg)
 
-	var img_path := "res://assets/modules/%s.png" % mod.id
-	if ResourceLoader.exists(img_path):
+	var tex: Texture2D = _get_module_texture(mod.id)
+	if tex != null:
 		var img := TextureRect.new()
 		# Fill the img_bg completely — no manual coordinate math needed.
 		img.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		img.texture      = load(img_path)
+		img.texture      = tex
 		img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		img.mouse_filter = MOUSE_FILTER_IGNORE
 		img_bg.add_child(img)   # child of img_bg, not card
@@ -239,6 +241,16 @@ func _stat_lines(mod: Module) -> String:
 	if mod.paradox_rate   > 0.0: parts.append("PDX +%.0f/s" % mod.paradox_rate)
 	if parts.is_empty():         parts.append(mod.description.substr(0, 55))
 	return "\n".join(parts)
+
+func _get_module_texture(module_id: String) -> Texture2D:
+	if _module_texture_cache.has(module_id):
+		return _module_texture_cache[module_id] as Texture2D
+	var path: String = MODULE_ART_PATH_FMT % module_id
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path) as Texture2D
+	_module_texture_cache[module_id] = tex
+	return tex
 
 
 func _apply_card_style(card: Panel, rarity: Module.Rarity, selected: bool, hovered: bool) -> void:

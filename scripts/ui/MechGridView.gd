@@ -9,8 +9,9 @@ signal cell_clicked(pos: Vector2i)
 signal cell_hovered(pos: Vector2i)
 signal cell_unhovered
 
-const CELL_SIZE: int = 64
-const CELL_GAP:  int = 4
+const CELL_SIZE: int = 60
+const CELL_GAP:  int = 8
+const MODULE_ART_PATH_FMT: String = "res://assets/modules/%s.png"
 
 const CATEGORY_COLORS: Dictionary = {
 	Module.Category.STRUCTURAL: Color("6b5a3e"),
@@ -59,6 +60,7 @@ var _cable_nodes_px: PackedVector2Array = PackedVector2Array()
 var _cable_leaf_tips: PackedVector2Array = PackedVector2Array()
 var _struct_lines: Array     = []           # [{a,b,c,w}]
 var _struct_rivets: Array    = []           # [{p,r}]
+var _module_texture_cache: Dictionary = {}  # module_id -> Texture2D|null
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -106,14 +108,50 @@ func _build() -> void:
 			var panel := Panel.new()
 			panel.position = Vector2(float(x * step), float(y * step))
 			panel.size     = Vector2(float(CELL_SIZE), float(CELL_SIZE))
+			panel.clip_contents = true
 			_apply_style(panel, EMPTY_COLOR)
 
+			var art := TextureRect.new()
+			art.name = "Art"
+			art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			art.offset_left = 1.0
+			art.offset_top = 1.0
+			art.offset_right = -1.0
+			art.offset_bottom = -1.0
+			art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			art.mouse_filter = MOUSE_FILTER_IGNORE
+			panel.add_child(art)
+
+			var info_bg := ColorRect.new()
+			info_bg.name = "InfoBg"
+			info_bg.anchor_left = 0.0
+			info_bg.anchor_top = 1.0
+			info_bg.anchor_right = 1.0
+			info_bg.anchor_bottom = 1.0
+			info_bg.offset_left = 1.0
+			info_bg.offset_top = -18.0
+			info_bg.offset_right = -1.0
+			info_bg.offset_bottom = -1.0
+			info_bg.color = Color(0.04, 0.05, 0.06, 0.72)
+			info_bg.mouse_filter = MOUSE_FILTER_IGNORE
+			panel.add_child(info_bg)
+
 			var label := Label.new()
+			label.name = "InfoLabel"
 			label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+			label.vertical_alignment   = VERTICAL_ALIGNMENT_BOTTOM
+			label.offset_left          = 2.0
+			label.offset_top           = 2.0
+			label.offset_right         = -2.0
+			label.offset_bottom        = -2.0
 			label.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
-			label.add_theme_font_size_override("font_size", 10)
+			label.add_theme_font_size_override("font_size", 8)
+			label.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98))
+			label.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.02, 0.95))
+			label.add_theme_constant_override("outline_size", 2)
+			label.mouse_filter = MOUSE_FILTER_IGNORE
 			panel.add_child(label)
 
 			var pos := Vector2i(x, y)
@@ -275,7 +313,7 @@ func _draw_cables() -> void:
 		var speed: float = float(seg["speed"])
 		var is_leaf_tip: bool = bool(seg["leaf_tip"])
 		var pulse: float = 0.5 + 0.5 * sin((_anim_time * speed * TAU) + phase)
-		var w_shell: float = 4.4 * th
+		var w_shell: float = 5.2 * th
 		var w_hilite: float = 1.0 * th
 		var shadow_pts := _offset_polyline(pts, Vector2(1.4, 1.4))
 		draw_polyline(shadow_pts, Color(0, 0, 0, 0.26), w_shell + 2.0, true)
@@ -294,13 +332,22 @@ func _draw_cables() -> void:
 		draw_circle(pulse_pos, pulse_r, pulse_col)
 		draw_circle(pulse_pos, pulse_r * 0.46, Color(0.96, 1.0, 1.0, 0.45))
 
+		# Edge sockets at both ends keep cable readability high in tight builds.
+		var start_p: Vector2 = pts[0]
+		var end_p: Vector2 = pts[pts.size() - 1]
+		var sock_r: float = 1.15 + th * 1.25
+		draw_circle(start_p, sock_r + 0.45, Color(0.06, 0.08, 0.10, 0.90))
+		draw_circle(end_p, sock_r + 0.45, Color(0.06, 0.08, 0.10, 0.90))
+		draw_circle(start_p, sock_r, Color(0.76, 0.88, 0.98, 0.48))
+		draw_circle(end_p, sock_r, Color(0.76, 0.88, 0.98, 0.48))
+
 	for node_pos: Vector2 in _cable_nodes_px:
 		draw_circle(node_pos, 2.4, Color(0.13, 0.16, 0.20, 0.96))
 		draw_circle(node_pos, 1.1, Color(0.76, 0.86, 0.94, 0.60))
 
 	var leaf_glow: float = 0.5 + 0.5 * sin(_anim_time * 4.5)
 	for tip_pos: Vector2 in _cable_leaf_tips:
-		draw_circle(tip_pos, 1.35, Color(0.72, 0.88, 1.0, 0.18 + 0.20 * leaf_glow))
+		draw_circle(tip_pos, 1.8, Color(0.72, 0.88, 1.0, 0.18 + 0.20 * leaf_glow))
 
 ## Rebuild all geometry used by overlay rendering.
 ## Heavy work happens only when grid contents change; draw loop reuses this cache.
@@ -370,6 +417,16 @@ func _build_cable_cache() -> void:
 	var depths: Array = info["depths"]
 	var child_counts: Array = info["child_counts"]
 	var max_depth: int = int(info["max_depth"])
+	var degrees: Array = []
+	degrees.resize(nodes.size())
+	for i in range(nodes.size()):
+		degrees[i] = 0
+	for edge_v in tree_edges:
+		var edge: Dictionary = edge_v
+		var p_i: int = int(edge["parent"])
+		var c_i: int = int(edge["child"])
+		degrees[p_i] = int(degrees[p_i]) + 1
+		degrees[c_i] = int(degrees[c_i]) + 1
 
 	for edge_v in tree_edges:
 		var edge: Dictionary = edge_v
@@ -390,7 +447,8 @@ func _build_cable_cache() -> void:
 		_append_branch_segment(start, end, thickness, seed, false)
 
 	if tree_edges.is_empty():
-		_append_leaf_segments(root_idx, -1, nodes, depths, max_depth)
+		var root_room: int = maxi(0, 2 - int(degrees[root_idx]))
+		_append_leaf_segments(root_idx, -1, nodes, depths, max_depth, root_room)
 		return
 
 	for i in range(nodes.size()):
@@ -404,7 +462,8 @@ func _build_cable_cache() -> void:
 			if int(edge["child"]) == i:
 				parent_idx = int(edge["parent"])
 				break
-		_append_leaf_segments(i, parent_idx, nodes, depths, max_depth)
+		var room: int = maxi(0, 2 - int(degrees[i]))
+		_append_leaf_segments(i, parent_idx, nodes, depths, max_depth, room)
 
 func _collect_module_nodes() -> Array:
 	var grouped: Dictionary = {}
@@ -434,9 +493,17 @@ func _collect_module_nodes() -> Array:
 		if count <= 0:
 			continue
 		var sum: Vector2 = entry["sum"]
+		var center: Vector2 = sum / float(count)
+		# Small deterministic offset prevents mirrored perfect symmetry.
+		var cx_i: int = int(round(center.x))
+		var cy_i: int = int(round(center.y))
+		var nudge := Vector2(
+			(_rand01(module_id ^ cx_i, 701) * 2.0 - 1.0) * 2.3,
+			(_rand01(module_id ^ cy_i, 709) * 2.0 - 1.0) * 2.3
+		)
 		nodes.append({
 			"id": module_id,
-			"center": sum / float(count),
+			"center": center + nudge,
 		})
 	return nodes
 
@@ -462,38 +529,63 @@ func _build_tree_edges(nodes: Array, root_idx: int) -> Array:
 	if nodes.size() <= 1:
 		return edges
 
-	var connected: Array = [root_idx]
+	# Degree-capped path growth:
+	# always extend from one of two current chain endpoints.
+	# This guarantees every node has <= 2 cable connections.
+	var left_end: int = root_idx
+	var right_end: int = root_idx
+	var degrees: Array = []
+	degrees.resize(nodes.size())
+	for i in range(nodes.size()):
+		degrees[i] = 0
 	var remaining: Dictionary = {}
 	for i in range(nodes.size()):
 		if i != root_idx:
 			remaining[i] = true
 
 	while not remaining.is_empty():
+		var best_side: int = -1 # 0 = left, 1 = right
 		var best_parent: int = -1
 		var best_child: int = -1
 		var best_score: float = 1e20
 
-		for p_v in connected:
-			var p: int = int(p_v)
+		var rem_keys: Array = remaining.keys()
+		rem_keys.sort()
+		for side in [0, 1]:
+			var p: int = left_end if side == 0 else right_end
+			if int(degrees[p]) >= 2:
+				continue
 			var p_node: Dictionary = nodes[p]
 			var p_center: Vector2 = p_node["center"]
-			var rem_keys: Array = remaining.keys()
-			rem_keys.sort()
 			for c_v in rem_keys:
 				var c: int = int(c_v)
 				var c_node: Dictionary = nodes[c]
 				var c_center: Vector2 = c_node["center"]
 				var axis_pen: float = 0.08 * float(min(abs(p_center.x - c_center.x), abs(p_center.y - c_center.y)))
-				var score: float = p_center.distance_to(c_center) + axis_pen
+				var asym_seed: int = _hash_int(
+					(p + 1) * 92821
+					^ (c + 1) * 68917
+					^ int(p_center.x) * 19349663
+					^ int(c_center.y) * 83492791
+					^ side * 97531
+				)
+				var asym_noise: float = (_rand01(asym_seed, 73) - 0.5) * 7.0
+				var score: float = p_center.distance_to(c_center) + axis_pen + asym_noise
 				if score < best_score:
 					best_score = score
+					best_side = side
 					best_parent = p
 					best_child = c
 
 		if best_child < 0:
 			break
 		edges.append({"parent": best_parent, "child": best_child})
-		connected.append(best_child)
+		degrees[best_parent] = int(degrees[best_parent]) + 1
+		degrees[best_child] = int(degrees[best_child]) + 1
+		if best_side == 0:
+			left_end = best_child
+		else:
+			right_end = best_child
 		remaining.erase(best_child)
 
 	return edges
@@ -535,8 +627,10 @@ func _module_anchor_towards(node: Dictionary, to_point: Vector2, parent_idx: int
 	var perp := Vector2(-dir.y, dir.x)
 	var node_id: int = int(node["id"])
 	var salt: int = (17 if from_parent else 29) + parent_idx * 97 + child_idx * 151 + node_id
-	var jitter: float = (_rand01(node_id, salt) * 2.0 - 1.0) * 4.5
-	return center + dir * (float(CELL_SIZE) * 0.34) + perp * jitter
+	var jitter: float = (_rand01(node_id, salt) * 2.0 - 1.0) * (float(CELL_SIZE) * 0.085)
+	# Push anchors slightly into the inter-cell gap so cables remain visible.
+	var out_to_gap: float = float(CELL_SIZE) * 0.5 + float(CELL_GAP) * 0.28
+	return center + dir * out_to_gap + perp * jitter
 
 func _append_branch_segment(start: Vector2, end: Vector2, thickness: float, seed: int, leaf_tip: bool) -> void:
 	var delta := end - start
@@ -545,13 +639,20 @@ func _append_branch_segment(start: Vector2, end: Vector2, thickness: float, seed
 		return
 	var dir := delta / len
 	var perp := Vector2(-dir.y, dir.x)
-	var side: float = -1.0 if _rand01(seed, 11) < 0.5 else 1.0
-	var bend: float = lerpf(3.2, 9.0, _rand01(seed, 13)) * side
+	var spatial_seed: int = _hash_int(
+		seed
+		^ int(start.x * 37.0) * 73856093
+		^ int(start.y * 41.0) * 19349663
+		^ int(end.x * 43.0) * 83492791
+		^ int(end.y * 47.0) * 265443576
+	)
+	var side: float = -1.0 if _rand01(spatial_seed, 11) < 0.5 else 1.0
+	var bend: float = lerpf(4.4, 12.8, _rand01(spatial_seed, 13)) * side
 	if len > float(CELL_SIZE + CELL_GAP):
 		bend *= 1.25
 	var mid := (start + end) * 0.5 + perp * bend
-	var lead_t: float = 0.38 + _rand01(seed, 17) * 0.12
-	var tail_t: float = 0.50 + _rand01(seed, 19) * 0.12
+	var lead_t: float = 0.36 + _rand01(spatial_seed, 17) * 0.15
+	var tail_t: float = 0.48 + _rand01(spatial_seed, 19) * 0.15
 	var pts := PackedVector2Array([
 		start,
 		start.lerp(mid, lead_t),
@@ -562,14 +663,16 @@ func _append_branch_segment(start: Vector2, end: Vector2, thickness: float, seed
 	_cable_segments.append({
 		"pts": pts,
 		"thickness": thickness,
-		"phase": _rand01(seed, 23) * TAU,
-		"speed": lerpf(0.20, 0.46, _rand01(seed, 29)),
+		"phase": _rand01(spatial_seed, 23) * TAU,
+		"speed": lerpf(0.20, 0.46, _rand01(spatial_seed, 29)),
 		"leaf_tip": leaf_tip,
 	})
 	if leaf_tip:
 		_cable_leaf_tips.append(end)
 
-func _append_leaf_segments(node_idx: int, parent_idx: int, nodes: Array, depths: Array, max_depth: int) -> void:
+func _append_leaf_segments(node_idx: int, parent_idx: int, nodes: Array, depths: Array, max_depth: int, max_extra_connections: int) -> void:
+	if max_extra_connections <= 0:
+		return
 	var node: Dictionary = nodes[node_idx]
 	var center: Vector2 = node["center"]
 	var outward := Vector2.RIGHT
@@ -585,6 +688,9 @@ func _append_leaf_segments(node_idx: int, parent_idx: int, nodes: Array, depths:
 	var node_id: int = int(node["id"])
 	var base_seed: int = _hash_int(node_id ^ (node_idx + 3) * 809 ^ (parent_idx + 11) * 1237)
 	var leaf_count: int = 1 + int(_rand01(base_seed, 31) > 0.64)
+	leaf_count = mini(leaf_count, max_extra_connections)
+	if leaf_count <= 0:
+		return
 
 	for i in range(leaf_count):
 		var seed: int = _hash_int(base_seed ^ (i + 1) * 2971)
@@ -674,7 +780,9 @@ func _redraw_cell(pos: Vector2i) -> void:
 		return
 	var cell:  GridCell = _current_grid.get_cell(pos)
 	var panel: Panel    = _panels[pos.y][pos.x]
-	var label: Label    = panel.get_child(0)
+	var art: TextureRect = panel.get_node("Art") as TextureRect
+	var info_bg: ColorRect = panel.get_node("InfoBg") as ColorRect
+	var label: Label = panel.get_node("InfoLabel") as Label
 
 	var base: Color = EMPTY_COLOR if cell.is_empty() else CATEGORY_COLORS.get(cell.module.category, EMPTY_COLOR)
 	if not cell.is_empty() and cell.module.disabled:
@@ -710,10 +818,32 @@ func _redraw_cell(pos: Vector2i) -> void:
 
 	_apply_style(panel, final_color, overlay_border, overlay_border_w)
 	if cell.is_empty():
+		if art != null:
+			art.texture = null
+			art.visible = false
+		if info_bg != null:
+			info_bg.visible = false
 		label.text = ""
 	else:
+		if art != null:
+			var tex: Texture2D = _get_module_texture(cell.module.id)
+			art.texture = tex
+			art.visible = tex != null
+			art.modulate = Color(1.0, 1.0, 1.0, 0.40 if cell.module.disabled else 0.96)
 		var stars := "★".repeat(cell.module.star_level - 1)
 		label.text = cell.module.display_name + ("\n" + stars if stars else "")
+		if info_bg != null:
+			info_bg.visible = true
+
+func _get_module_texture(module_id: String) -> Texture2D:
+	if _module_texture_cache.has(module_id):
+		return _module_texture_cache[module_id] as Texture2D
+	var path: String = MODULE_ART_PATH_FMT % module_id
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path) as Texture2D
+	_module_texture_cache[module_id] = tex
+	return tex
 
 func _apply_style(panel: Panel, color: Color, border: Color = Color.TRANSPARENT, border_w: int = 1) -> void:
 	var style := StyleBoxFlat.new()
