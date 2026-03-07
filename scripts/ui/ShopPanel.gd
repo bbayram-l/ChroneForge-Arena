@@ -54,19 +54,39 @@ func show_offers(offers: Array[Module]) -> void:
 func get_selected() -> Module:
 	return _selected_mod
 
+func get_selected_slot() -> int:
+	return _offers.find(_selected_mod)
+
+func get_offer_count() -> int:
+	return _offers.size()
+
+func get_offer_at(slot: int) -> Module:
+	if slot < 0 or slot >= _offers.size():
+		return null
+	return _offers[slot]
+
+func find_offer_slot(mod: Module) -> int:
+	return _offers.find(mod)
+
 func set_player_grid(grid: MechGrid) -> void:
 	_player_grid = grid
 
 func remove_offer(mod: Module) -> void:
-	var idx := _offers.find(mod)
-	if idx < 0:
+	remove_offer_at(_offers.find(mod))
+
+func remove_offer_at(slot: int) -> void:
+	if slot < 0 or slot >= _offers.size():
 		return
+	var mod: Module = _offers[slot]
 	_cost_labels.erase(mod)
-	_cards[idx].queue_free()
-	_cards.remove_at(idx)
-	_offers.remove_at(idx)
+	_cards[slot].queue_free()
+	_cards.remove_at(slot)
+	_offers.remove_at(slot)
 	if _hover_mod == mod:
 		_hover_mod = null
+	if _selected_mod == mod:
+		_selected_mod = null
+	_refresh_selection()
 	# Cards keep their original slot x-positions so remaining slots are predictable.
 	# Do NOT reposition — gaps appear but click coordinates stay stable.
 

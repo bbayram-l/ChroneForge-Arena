@@ -39,6 +39,7 @@ var _selected_offer:  Module = null
 var _sell_mode:       bool   = false
 var _upgrade_mode:    bool   = false
 var _protected_cells: Array[Vector2i] = []
+var _starter_modules: Array[Module] = []
 
 # ── Screen-edge flash overlay ───────────────────────────────────────────────
 var _flash_rect:  ColorRect = null
@@ -67,6 +68,7 @@ func _ready() -> void:
 	_run_seed = _new_run_seed(17)
 	_run_rng.seed = _run_seed
 	shop = ShopSystem.new(ModuleRegistry.all_modules, int(_run_rng.randi()))
+	_register_grb_commands()
 
 	_setup_ui()
 	_archetype_panel.visible = true
@@ -1012,6 +1014,7 @@ func _on_archetype_selected(archetype: String) -> void:
 
 	# Reset grids + shop for a fresh run
 	_protected_cells.clear()
+	_starter_modules.clear()
 	player_grid = MechGrid.new("player")
 	enemy_grid  = MechGrid.new("enemy")
 	player_grid_view.refresh(player_grid)
@@ -1028,6 +1031,7 @@ func _on_archetype_selected(archetype: String) -> void:
 # ── Starter modules ────────────────────────────────────────────────────────
 
 func _give_starter_modules() -> void:
+	_starter_modules.clear()
 	# All archetypes share the cheapest COMMON POWER module as the protected core.
 	var power_starters: Array[Module] = []
 	for mod: Module in ModuleRegistry.all_modules:
@@ -1038,6 +1042,9 @@ func _give_starter_modules() -> void:
 	power_starters.sort_custom(func(a: Module, b: Module) -> bool: return a.cost < b.cost)
 	var core: Module = power_starters[0]
 	player_grid.place_module(Vector2i(2, 2), core)
+	var core_cell: GridCell = player_grid.get_cell(Vector2i(2, 2))
+	if core_cell != null and not core_cell.is_empty():
+		_starter_modules.append(core_cell.module)
 	_protected_cells.append(Vector2i(2, 2))
 	print("[Setup] Starter core: %s placed (free)" % core.display_name)
 
@@ -1053,6 +1060,9 @@ func _give_starter_modules() -> void:
 		var bonus_mod := _find_module_by_id(bonus_id)
 		if bonus_mod != null:
 			player_grid.place_module(Vector2i(3, 2), bonus_mod)
+			var bonus_cell: GridCell = player_grid.get_cell(Vector2i(3, 2))
+			if bonus_cell != null and not bonus_cell.is_empty():
+				_starter_modules.append(bonus_cell.module)
 			print("[Setup] %s starter: %s placed" % [GameState.archetype, bonus_mod.display_name])
 
 	player_grid_view.refresh(player_grid)
@@ -1099,14 +1109,20 @@ func _enter_shop_phase() -> void:
 	shop_panel.set_player_grid(player_grid)
 	shop_panel.show_offers(offers)
 	_action_btn.text     = "READY"
-	_action_btn.disabled = false
+	_action_btn.disabled = true
 	_reroll_btn.text     = "REROLL (%dg)" % GameState.get_reroll_cost()
 	_reroll_btn.disabled = false
 	_sell_btn.disabled    = false
 	_upgrade_btn.disabled = false
-	_update_status()
+	_refresh_ready_gate()
 
 func _start_combat() -> void:
+	if phase != Phase.SHOP_PHASE:
+		return
+	if not _has_non_starter_module():
+		print("[Shop] READY blocked: place at least one non-starter module first.")
+		_refresh_ready_gate()
+		return
 	phase = Phase.COMBAT
 	_action_btn.disabled  = true
 	_reroll_btn.disabled  = true
@@ -1248,7 +1264,7 @@ func _on_player_cell_clicked(pos: Vector2i) -> void:
 		GameState.gold_changed.emit(GameState.gold)
 		player_grid_view.refresh(player_grid)
 		hud_panel.refresh(player_grid)
-		_update_status()
+		_refresh_ready_gate()
 		print("[Sell] Sold: %s ★%d for %dg" % [mod.display_name, mod.star_level, refund])
 		return
 
@@ -1268,28 +1284,19 @@ func _on_player_cell_clicked(pos: Vector2i) -> void:
 		mod.upgrade()
 		player_grid_view.refresh(player_grid)
 		hud_panel.refresh(player_grid)
-		_update_status()
+		_refresh_ready_gate()
 		print("[Upgrade] %s → ★%d (%dg spent)" % [mod.display_name, mod.star_level, ucost])
 		return
 
 	# Normal placement mode
 	if _selected_offer == null:
 		return
-	if GameState.gold < _selected_offer.cost:
-		print("[Shop] Not enough gold (need %d, have %d)" % [_selected_offer.cost, GameState.gold])
+	var slot := shop_panel.get_selected_slot()
+	if slot < 0:
+		slot = shop_panel.find_offer_slot(_selected_offer)
+	if slot < 0:
 		return
-	if not player_grid.can_place(pos, _selected_offer):
-		return
-	if GameState.spend_gold(_selected_offer.cost):
-		player_grid.place_module(pos, _selected_offer)
-		player_grid_view.refresh(player_grid)
-		hud_panel.refresh(player_grid)
-		_update_status()
-		print("[Shop] Placed: %s at (%d,%d)" % [_selected_offer.display_name, pos.x, pos.y])
-		shop_panel.remove_offer(_selected_offer)
-		_selected_offer = null
-		shop_panel.deselect()
-		player_grid_view.clear_highlights()
+	purchase_and_place(slot, pos)
 
 func _on_reroll_pressed() -> void:
 	if reroll_shop():
@@ -1387,6 +1394,37 @@ func _update_status(suffix: String = "") -> void:
 		text += "  |  " + suffix
 	_status_label.text = text
 
+func _has_non_starter_module() -> bool:
+	for mod: Module in player_grid.get_all_modules():
+		if not _starter_modules.has(mod):
+			return true
+	return false
+
+func _refresh_ready_gate() -> void:
+	if phase != Phase.SHOP_PHASE:
+		return
+	var can_ready := _has_non_starter_module()
+	_action_btn.text = "READY" if can_ready else "READY (Need 1 module)"
+	_action_btn.disabled = not can_ready
+	if can_ready:
+		_update_status()
+	else:
+		_update_status("Place at least 1 non-starter module")
+
+func _register_grb_commands() -> void:
+	var cmds := get_node_or_null("/root/GRBCommands")
+	if cmds != null and cmds.has_method("register"):
+		cmds.register("autoplay_10_rounds", Callable(self, "_grb_autoplay_10_rounds"))
+
+func _phase_name(p: Phase) -> String:
+	match p:
+		Phase.START_RUN:  return "START_RUN"
+		Phase.SHOP_PHASE: return "SHOP_PHASE"
+		Phase.COMBAT:     return "COMBAT"
+		Phase.ROUND_END:  return "ROUND_END"
+		Phase.RUN_OVER:   return "RUN_OVER"
+	return "UNKNOWN"
+
 # ── Drag-and-drop ────────────────────────────────────────────────────────────
 
 func _process(_delta: float) -> void:
@@ -1462,19 +1500,10 @@ func _on_shop_drag_dropped(mod: Module, screen_pos: Vector2) -> void:
 	var ox: int = clamp(cell.x - gs.x / 2, 0, MechGrid.GRID_WIDTH  - gs.x)
 	var oy: int = clamp(cell.y - gs.y / 2, 0, MechGrid.GRID_HEIGHT - gs.y)
 	var origin := Vector2i(ox, oy)
-	if GameState.gold < mod.cost:
-		print("[Shop] Not enough gold (need %d, have %d)" % [mod.cost, GameState.gold])
+	var slot := shop_panel.find_offer_slot(mod)
+	if slot < 0:
 		return
-	if not player_grid.can_place(origin, mod):
-		return
-	if GameState.spend_gold(mod.cost):
-		player_grid.place_module(origin, mod)
-		player_grid_view.refresh(player_grid)
-		hud_panel.refresh(player_grid)
-		_update_status()
-		print("[Shop] Dragged: %s at (%d,%d)" % [mod.display_name, origin.x, origin.y])
-		shop_panel.remove_offer(mod)
-		shop_panel.deselect()
+	purchase_and_place(slot, origin)
 
 
 func _clear_drag() -> void:
@@ -1730,18 +1759,43 @@ func _try_load_ghost(round_num: int) -> MechGrid:
 
 # ── Public API (called by future UI nodes) ─────────────────────────────────
 
-func buy_module(mod: Module) -> bool:
+func _buy_module(mod: Module) -> bool:
 	if phase != Phase.SHOP_PHASE:
 		return false
 	return GameState.spend_gold(mod.cost)
 
-func place_module(pos: Vector2i, mod: Module) -> bool:
+func _place_module(pos: Vector2i, mod: Module) -> bool:
 	if phase != Phase.SHOP_PHASE:
 		return false
 	if player_grid.place_module(pos, mod):
 		player_grid_view.refresh(player_grid)
+		hud_panel.refresh(player_grid)
 		return true
 	return false
+
+func purchase_and_place(offer_slot: int, pos: Vector2i) -> bool:
+	if phase != Phase.SHOP_PHASE:
+		return false
+	var mod := shop_panel.get_offer_at(offer_slot)
+	if mod == null:
+		return false
+	if not player_grid.can_place(pos, mod):
+		return false
+	if not _buy_module(mod):
+		print("[Shop] Not enough gold (need %d, have %d)" % [mod.cost, GameState.gold])
+		return false
+	if not _place_module(pos, mod):
+		# Placement failed after spend (should be rare). Refund to keep state valid.
+		GameState.gold += mod.cost
+		GameState.gold_changed.emit(GameState.gold)
+		return false
+	shop_panel.remove_offer_at(offer_slot)
+	shop_panel.deselect()
+	_selected_offer = null
+	player_grid_view.clear_highlights()
+	_refresh_ready_gate()
+	print("[Shop] Placed: %s at (%d,%d) [slot %d]" % [mod.display_name, pos.x, pos.y, offer_slot])
+	return true
 
 func confirm_build() -> void:
 	if phase == Phase.SHOP_PHASE:
@@ -1756,5 +1810,119 @@ func reroll_shop() -> bool:
 	var new_offers := shop.reroll(GameState.current_round)
 	shop_panel.set_player_grid(player_grid)
 	shop_panel.show_offers(new_offers)
-	_update_status()
+	_refresh_ready_gate()
 	return true
+
+## GRB custom command: deterministic auto-run for quick balance regression checks.
+## Example via run_custom_command:
+##   { "name": "autoplay_10_rounds", "args": [1337, "FORTRESS_STABILIZER"] }
+func _grb_autoplay_10_rounds(rng_seed: int = 1337, archetype: String = "FORTRESS_STABILIZER") -> Dictionary:
+	var fixed_seed := maxi(1, rng_seed)
+	var supported := [
+		"RECOIL_BERSERKER",
+		"THERMAL_OVERDRIVE",
+		"TEMPORAL_ASSASSIN",
+		"FORTRESS_STABILIZER",
+		"PARADOX_GAMBLER",
+	]
+	var picked_archetype := archetype if archetype in supported else "FORTRESS_STABILIZER"
+
+	# Hard-reset run state to make the command deterministic for a given seed/archetype.
+	GameState.archetype = picked_archetype
+	_archetype_panel.visible = false
+	hud_panel.set_archetype(picked_archetype)
+	_protected_cells.clear()
+	_starter_modules.clear()
+	player_grid = MechGrid.new("player")
+	enemy_grid  = MechGrid.new("enemy")
+	player_grid_view.refresh(player_grid)
+	enemy_grid_view.refresh(enemy_grid)
+	_run_seed = fixed_seed
+	_run_rng.seed = _run_seed
+	shop = ShopSystem.new(ModuleRegistry.all_modules, fixed_seed)
+	GameState.start_run()
+	GameLogger.log_run_start(picked_archetype)
+	_give_starter_modules()
+	_enter_shop_phase()
+
+	var round_log: Array[Dictionary] = []
+	for _i in range(10):
+		if phase != Phase.SHOP_PHASE:
+			break
+		var buys := _debug_autobuy_and_place(2)
+		var played_round := GameState.current_round
+		_start_combat()
+		if phase == Phase.SHOP_PHASE:
+			# READY gate blocked combat start.
+			round_log.append({
+				"round": played_round,
+				"winner": "blocked",
+				"buys": buys,
+				"lives_after": GameState.player_lives,
+				"gold_after": GameState.gold,
+				"phase_after": _phase_name(phase),
+			})
+			break
+		round_log.append({
+			"round": played_round,
+			"winner": str(_last_result.get("winner", "?")),
+			"buys": buys,
+			"lives_after": GameState.player_lives,
+			"gold_after": GameState.gold,
+			"phase_after": _phase_name(phase),
+		})
+		if phase == Phase.ROUND_END:
+			_enter_shop_phase()
+		else:
+			break
+
+	return {
+		"seed": fixed_seed,
+		"archetype": picked_archetype,
+		"rounds_played": round_log.size(),
+		"final_round": GameState.current_round,
+		"final_lives": GameState.player_lives,
+		"wins": GameState.total_wins,
+		"losses": GameState.total_losses,
+		"mmr": GameState.mmr,
+		"phase": _phase_name(phase),
+		"round_log": round_log,
+	}
+
+func _debug_autobuy_and_place(max_buys: int) -> Array[Dictionary]:
+	var buys: Array[Dictionary] = []
+	var bought := 0
+	while bought < max_buys:
+		var placed := false
+		for slot in range(shop_panel.get_offer_count()):
+			var mod := shop_panel.get_offer_at(slot)
+			if mod == null:
+				continue
+			if GameState.gold < mod.cost:
+				continue
+			var pos := _find_first_placeable_pos(mod)
+			if pos.x < 0:
+				continue
+			var detail := {
+				"slot": slot,
+				"id": mod.id,
+				"name": mod.display_name,
+				"cost": mod.cost,
+				"pos": [pos.x, pos.y],
+			}
+			if purchase_and_place(slot, pos):
+				buys.append(detail)
+				bought += 1
+				placed = true
+				break
+		if not placed:
+			break
+	return buys
+
+func _find_first_placeable_pos(mod: Module) -> Vector2i:
+	for y in range(MechGrid.GRID_HEIGHT - mod.grid_size.y + 1):
+		for x in range(MechGrid.GRID_WIDTH - mod.grid_size.x + 1):
+			var pos := Vector2i(x, y)
+			if player_grid.can_place(pos, mod):
+				return pos
+	return Vector2i(-1, -1)
