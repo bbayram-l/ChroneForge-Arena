@@ -18,12 +18,12 @@
 	"category": "STRUCTURAL",
 	"rarity": "COMMON",
 	"description": "High HP but adds significant torque stress.",
-	"cost": 3,
+	"cost": 4,
 	"grid_w": 1,
 	"grid_h": 1,
 	"weight": 2.5,
 	"structural_load": 2.0,
-	"hp": 40.0
+	"hp": 36.0
   },
   {
 	"id": "gyro_stabilizer",
@@ -533,7 +533,7 @@
 	"grid_h": 1,
 	"weight": 0.3,
 	"structural_load": 0.3,
-	"hp": 6.0
+	"hp": 8.0
   },
   {
 	"id": "armored_chassis",

@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+### Balance Changes
+
+- **Structural frame tuning (cost/HP pass):**
+  - **Reinforced Frame** — cost **3 -> 4**, HP **40 -> 36**.
+    Still a high-HP common, but no longer the most efficient early-buy tank piece.
+  - **Carbon Weave** — HP **6 -> 8** (cost remains **2**).
+    Keeps the ultra-light identity while making the downside less punishing.
+  - **Light Frame** — unchanged at cost **2**, HP **10**.
+    Remains the baseline common structural filler.
+
 ---
 
 ## [0.9.2] — Balance Pass v3 — 2026-03-06
