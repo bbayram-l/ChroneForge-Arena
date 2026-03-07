@@ -26,6 +26,10 @@ const HIGHLIGHT_COLOR      := Color("2a5a2a")   # valid placement cell
 const HOVER_COLOR          := Color("4a9a20")   # hovered valid cell
 const FOOTPRINT_VALID_COL  := Color(0.20, 0.85, 0.25, 0.80)   # green — can drop here
 const FOOTPRINT_INVALID_COL := Color(0.85, 0.15, 0.10, 0.80)  # red   — cannot drop
+const CABLE_ENABLE: bool   = true
+const CABLE_BASE_COL       := Color(0.05, 0.06, 0.08, 0.75)
+const CABLE_SHEATH_COL     := Color(0.18, 0.22, 0.28, 0.90)
+const CABLE_HILITE_COL     := Color(0.62, 0.74, 0.86, 0.42)
 
 var _panels:       Array     = []            # [y][x] → Panel
 var _title_label:  Label
@@ -167,6 +171,8 @@ func clear_drag_footprint() -> void:
 # ── Torque visualizer ───────────────────────────────────────────────────────
 
 func _draw() -> void:
+	if CABLE_ENABLE and _current_grid != null:
+		_draw_cables()
 	if not _show_com:
 		return
 	var step := float(CELL_SIZE + CELL_GAP)
@@ -206,6 +212,116 @@ func _draw() -> void:
 						var px := Vector2(float(cx), float(cy)) * step
 						draw_rect(Rect2(px, Vector2(float(CELL_SIZE), float(CELL_SIZE))),
 							cat_colors[cell.module.category], false, 2.0)
+
+## Draw deterministic cable bundles between occupied cells to add mech-like wiring.
+## - Links orthogonally adjacent occupied cells.
+## - Adds "bridge" links across a 1-cell gap for denser mechanical silhouettes.
+## - Skips links between cells owned by the same multi-cell module.
+func _draw_cables() -> void:
+	for y in range(MechGrid.GRID_HEIGHT):
+		for x in range(MechGrid.GRID_WIDTH):
+			var a := Vector2i(x, y)
+			if not _is_occupied(a):
+				continue
+
+			var r := Vector2i(x + 1, y)
+			if _is_linkable(a, r):
+				_draw_cable_between(a, r, 1.0)
+			var d := Vector2i(x, y + 1)
+			if _is_linkable(a, d):
+				_draw_cable_between(a, d, 1.0)
+
+			# One-cell bridge links (A . B) make sparse builds look less disconnected.
+			var r2 := Vector2i(x + 2, y)
+			if _is_linkable(a, r2) and _is_empty_cell(Vector2i(x + 1, y)):
+				_draw_cable_between(a, r2, 0.85)
+			var d2 := Vector2i(x, y + 2)
+			if _is_linkable(a, d2) and _is_empty_cell(Vector2i(x, y + 1)):
+				_draw_cable_between(a, d2, 0.85)
+
+func _draw_cable_between(a: Vector2i, b: Vector2i, thickness_scale: float) -> void:
+	var start := _cable_anchor(a, b, true)
+	var end := _cable_anchor(a, b, false)
+	var d := end - start
+	var len := d.length()
+	if len < 2.0:
+		return
+	var dir := d / len
+	var perp := Vector2(-dir.y, dir.x)
+
+	var side := -1.0 if _cable_rand(a, b, 17) < 0.5 else 1.0
+	var bend := (3.5 + 4.0 * _cable_rand(a, b, 23)) * side
+	if maxi(absi(a.x - b.x), absi(a.y - b.y)) > 1:
+		bend *= 1.35
+	var mid := (start + end) * 0.5 + perp * bend
+
+	var pts := PackedVector2Array([
+		start,
+		start.lerp(mid, 0.45),
+		mid,
+		mid.lerp(end, 0.55),
+		end,
+	])
+
+	var w_shell := 4.4 * thickness_scale
+	var w_hilite := 1.0 * thickness_scale
+	draw_polyline(pts, CABLE_BASE_COL, w_shell + 1.6, true)
+	draw_polyline(pts, CABLE_SHEATH_COL, w_shell, true)
+	draw_polyline(pts, CABLE_HILITE_COL, w_hilite, true)
+	draw_circle(start, 2.2 * thickness_scale, Color(0.16, 0.20, 0.26, 0.95))
+	draw_circle(end,   2.2 * thickness_scale, Color(0.16, 0.20, 0.26, 0.95))
+	draw_circle(start, 0.95 * thickness_scale, Color(0.68, 0.80, 0.92, 0.75))
+	draw_circle(end,   0.95 * thickness_scale, Color(0.68, 0.80, 0.92, 0.75))
+
+func _cable_anchor(a: Vector2i, b: Vector2i, from_a: bool) -> Vector2:
+	var src := a if from_a else b
+	var dst := b if from_a else a
+	var step := float(CELL_SIZE + CELL_GAP)
+	var center := Vector2(float(src.x) * step + float(CELL_SIZE) * 0.5, float(src.y) * step + float(CELL_SIZE) * 0.5)
+	var delta := dst - src
+	var inset := float(CELL_SIZE) * 0.28
+	var jitter := (_cable_rand(a, b, 41 if from_a else 43) * 2.0 - 1.0) * 5.0
+
+	if absi(delta.x) >= absi(delta.y):
+		var sx: float = sign(float(delta.x))
+		center.x += sx * inset
+		center.y += jitter
+	else:
+		var sy: float = sign(float(delta.y))
+		center.y += sy * inset
+		center.x += jitter
+	return center
+
+func _is_linkable(a: Vector2i, b: Vector2i) -> bool:
+	if not _in_bounds(a) or not _in_bounds(b):
+		return false
+	var ca := _current_grid.get_cell(a)
+	var cb := _current_grid.get_cell(b)
+	if ca == null or cb == null or ca.is_empty() or cb.is_empty():
+		return false
+	return ca.module != cb.module
+
+func _is_occupied(pos: Vector2i) -> bool:
+	if not _in_bounds(pos):
+		return false
+	var cell := _current_grid.get_cell(pos)
+	return cell != null and not cell.is_empty()
+
+func _is_empty_cell(pos: Vector2i) -> bool:
+	if not _in_bounds(pos):
+		return false
+	var cell := _current_grid.get_cell(pos)
+	return cell != null and cell.is_empty()
+
+func _in_bounds(pos: Vector2i) -> bool:
+	return pos.x >= 0 and pos.x < MechGrid.GRID_WIDTH and pos.y >= 0 and pos.y < MechGrid.GRID_HEIGHT
+
+func _cable_rand(a: Vector2i, b: Vector2i, salt: int) -> float:
+	var h: int = int((a.x + 1) * 73856093) ^ int((a.y + 3) * 19349663)
+	h ^= int((b.x + 5) * 83492791) ^ int((b.y + 7) * 265443576)
+	h ^= int(salt * 97531)
+	h = absi(h % 1000)
+	return float(h) / 999.0
 
 # ── Internal rendering ──────────────────────────────────────────────────────
 
