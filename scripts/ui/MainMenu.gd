@@ -4,9 +4,15 @@ extends Node
 
 var _fullscreen:        bool    = false
 var _changelog_overlay: Control = null
+var _accent_bar: ColorRect = null
+var _title_label: Label = null
+var _tag_label: Label = null
+var _play_btn: Button = null
+var _idle_t: float = 0.0
 
 func _ready() -> void:
 	_build_ui()
+	set_process(true)
 
 func _build_ui() -> void:
 	var canvas := CanvasLayer.new()
@@ -20,31 +26,31 @@ func _build_ui() -> void:
 	canvas.add_child(bg)
 
 	# Accent bar (top)
-	var bar := ColorRect.new()
-	bar.position = Vector2(0.0, 0.0)
-	bar.size     = Vector2(1280.0, 4.0)
-	bar.color    = Color(0.9, 0.5, 0.1)
-	canvas.add_child(bar)
+	_accent_bar = ColorRect.new()
+	_accent_bar.position = Vector2(0.0, 0.0)
+	_accent_bar.size     = Vector2(1280.0, 4.0)
+	_accent_bar.color    = Color(0.9, 0.5, 0.1)
+	canvas.add_child(_accent_bar)
 
 	# Title
-	var title := Label.new()
-	title.position = Vector2(0.0, 230.0)
-	title.size     = Vector2(1280.0, 80.0)
-	title.text     = "CHRONOFORGE ARENA"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 54)
-	title.add_theme_color_override("font_color", Color(0.92, 0.58, 0.12))
-	canvas.add_child(title)
+	_title_label = Label.new()
+	_title_label.position = Vector2(0.0, 230.0)
+	_title_label.size     = Vector2(1280.0, 80.0)
+	_title_label.text     = "CHRONOFORGE ARENA"
+	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title_label.add_theme_font_size_override("font_size", 54)
+	_title_label.add_theme_color_override("font_color", Color(0.92, 0.58, 0.12))
+	canvas.add_child(_title_label)
 
 	# Tagline
-	var tag := Label.new()
-	tag.position = Vector2(0.0, 316.0)
-	tag.size     = Vector2(1280.0, 28.0)
-	tag.text     = "Build unstable modular mechs.  Break physics.  Bend time."
-	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tag.add_theme_font_size_override("font_size", 15)
-	tag.modulate = Color(0.55, 0.55, 0.62)
-	canvas.add_child(tag)
+	_tag_label = Label.new()
+	_tag_label.position = Vector2(0.0, 316.0)
+	_tag_label.size     = Vector2(1280.0, 28.0)
+	_tag_label.text     = "Build unstable modular mechs.  Break physics.  Bend time."
+	_tag_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_tag_label.add_theme_font_size_override("font_size", 15)
+	_tag_label.modulate = Color(0.55, 0.55, 0.62)
+	canvas.add_child(_tag_label)
 
 	# Divider
 	var div := ColorRect.new()
@@ -54,9 +60,10 @@ func _build_ui() -> void:
 	canvas.add_child(div)
 
 	# PLAY button
-	var play_btn := _make_btn("PLAY", Vector2(515.0, 376.0), Vector2(250.0, 56.0), 22)
-	play_btn.pressed.connect(_on_play)
-	canvas.add_child(play_btn)
+	_play_btn = _make_btn("PLAY", Vector2(515.0, 376.0), Vector2(250.0, 56.0), 22, true)
+	_play_btn.name = "PlayBtn"
+	_play_btn.pressed.connect(_on_play)
+	canvas.add_child(_play_btn)
 
 	# Fullscreen toggle
 	var fs_btn := _make_btn("FULLSCREEN: OFF", Vector2(515.0, 444.0), Vector2(250.0, 38.0), 13)
@@ -66,13 +73,22 @@ func _build_ui() -> void:
 
 	# QUIT button
 	var quit_btn := _make_btn("QUIT", Vector2(515.0, 494.0), Vector2(250.0, 38.0), 13)
+	quit_btn.name = "QuitBtn"
 	quit_btn.pressed.connect(_on_quit)
 	canvas.add_child(quit_btn)
 
 	# WHAT'S NEW button
 	var log_btn := _make_btn("WHAT'S NEW", Vector2(515.0, 544.0), Vector2(250.0, 38.0), 13)
+	log_btn.name = "ChangelogBtn"
 	log_btn.pressed.connect(_on_changelog_pressed.bind(canvas))
 	canvas.add_child(log_btn)
+	_play_btn.focus_neighbor_bottom = NodePath("../FullscreenBtn")
+	fs_btn.focus_neighbor_top = NodePath("../PlayBtn")
+	fs_btn.focus_neighbor_bottom = NodePath("../QuitBtn")
+	quit_btn.focus_neighbor_top = NodePath("../FullscreenBtn")
+	quit_btn.focus_neighbor_bottom = NodePath("../ChangelogBtn")
+	log_btn.focus_neighbor_top = NodePath("../QuitBtn")
+	call_deferred("_focus_play_button")
 
 	# Version label (bottom-right) — read from version.txt at runtime
 	var ver := Label.new()
@@ -84,13 +100,72 @@ func _build_ui() -> void:
 	ver.modulate = Color(0.35, 0.35, 0.38)
 	canvas.add_child(ver)
 
-func _make_btn(text: String, pos: Vector2, sz: Vector2, font_size: int) -> Button:
+func _make_btn(text: String, pos: Vector2, sz: Vector2, font_size: int, primary: bool = false) -> Button:
 	var btn := Button.new()
 	btn.position = pos
 	btn.size     = sz
 	btn.text     = text
 	btn.add_theme_font_size_override("font_size", font_size)
+	btn.focus_mode = Control.FOCUS_ALL
+	_style_menu_btn(btn, primary)
 	return btn
+
+func _style_menu_btn(btn: Button, primary: bool) -> void:
+	var bg := Color("3a2a18") if primary else Color("1e2026")
+	var hov := Color("5a3d20") if primary else Color("2a2e38")
+	var press := Color("754c20") if primary else Color("38414f")
+
+	var sn := StyleBoxFlat.new()
+	sn.bg_color = bg
+	sn.border_color = Color(0.62, 0.43, 0.20, 0.35) if primary else Color(0.45, 0.48, 0.55, 0.35)
+	sn.set_border_width_all(1)
+	sn.set_corner_radius_all(6)
+	btn.add_theme_stylebox_override("normal", sn)
+
+	var sh := StyleBoxFlat.new()
+	sh.bg_color = hov
+	sh.border_color = Color(0.95, 0.78, 0.42, 0.55) if primary else Color(0.78, 0.82, 0.92, 0.45)
+	sh.set_border_width_all(2)
+	sh.set_corner_radius_all(6)
+	btn.add_theme_stylebox_override("hover", sh)
+
+	var sp := StyleBoxFlat.new()
+	sp.bg_color = press
+	sp.border_color = Color(0.98, 0.82, 0.45) if primary else Color(0.84, 0.88, 0.96, 0.6)
+	sp.set_border_width_all(2)
+	sp.set_corner_radius_all(6)
+	btn.add_theme_stylebox_override("pressed", sp)
+
+	var sf := StyleBoxFlat.new()
+	sf.bg_color = hov
+	sf.border_color = Color(1.0, 0.85, 0.45)
+	sf.set_border_width_all(3)
+	sf.set_corner_radius_all(6)
+	btn.add_theme_stylebox_override("focus", sf)
+
+	var sd := StyleBoxFlat.new()
+	sd.bg_color = bg.darkened(0.35)
+	sd.border_color = Color(0.35, 0.35, 0.35, 0.35)
+	sd.set_border_width_all(1)
+	sd.set_corner_radius_all(6)
+	btn.add_theme_stylebox_override("disabled", sd)
+
+func _focus_play_button() -> void:
+	if _play_btn != null and is_instance_valid(_play_btn):
+		_play_btn.grab_focus()
+
+func _process(delta: float) -> void:
+	_idle_t += delta
+	if _title_label != null:
+		_title_label.position.y = 230.0 + sin(_idle_t * 1.15) * 2.5
+	if _tag_label != null:
+		_tag_label.position.y = 316.0 + sin(_idle_t * 0.95 + 0.8) * 1.5
+		var alpha := 0.72 + 0.16 * (0.5 + 0.5 * sin(_idle_t * 1.1))
+		_tag_label.modulate = Color(0.55, 0.55, 0.62, alpha)
+	if _accent_bar != null:
+		var g := 0.50 + 0.05 * sin(_idle_t * 1.05)
+		var b := 0.10 + 0.03 * sin(_idle_t * 1.65 + 1.3)
+		_accent_bar.color = Color(0.90, g, b, 1.0)
 
 # ── Handlers ────────────────────────────────────────────────────────────────
 

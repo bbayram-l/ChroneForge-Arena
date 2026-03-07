@@ -26,9 +26,11 @@ var shop_panel:       ShopPanel
 var hud_panel:        HudPanel
 var _status_label:    Label
 var _action_btn:      Button
+var _ready_hint_label: Label
 var _reroll_btn:      Button
 var _sell_btn:        Button
 var _upgrade_btn:     Button
+var _shop_hint_label: Label
 var _run_over_panel:   Control
 var _results_panel:    Panel
 var _archetype_panel:  Panel
@@ -99,6 +101,13 @@ func _setup_ui() -> void:
 	_action_btn.pressed.connect(_on_action_pressed)
 	canvas.add_child(_action_btn)
 	_style_btn(_action_btn, Color("1a5c1a"), Color("2a8c2a"))   # green — go / confirm
+	_ready_hint_label = Label.new()
+	_ready_hint_label.position = Vector2(1000.0, 42.0)
+	_ready_hint_label.size     = Vector2(262.0, 28.0)
+	_ready_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_ready_hint_label.add_theme_font_size_override("font_size", 10)
+	_ready_hint_label.modulate = Color(0.90, 0.56, 0.20)
+	canvas.add_child(_ready_hint_label)
 
 	# Reroll button — visible only in shop phase
 	_reroll_btn = Button.new()
@@ -157,6 +166,12 @@ func _setup_ui() -> void:
 	shop_panel.drag_started.connect(_on_shop_drag_started)
 	shop_panel.drag_dropped.connect(_on_shop_drag_dropped)
 	GameState.gold_changed.connect(func(_g: int) -> void: shop_panel.refresh_affordability())
+	_shop_hint_label = Label.new()
+	_shop_hint_label.position = Vector2(24.0, 614.0)
+	_shop_hint_label.size     = Vector2(980.0, 18.0)
+	_shop_hint_label.add_theme_font_size_override("font_size", 11)
+	_shop_hint_label.modulate = Color(0.86, 0.78, 0.52)
+	canvas.add_child(_shop_hint_label)
 
 	# Run-over overlay (hidden until run ends)
 	_run_over_panel = _build_run_over_panel()
@@ -205,6 +220,7 @@ func _setup_ui() -> void:
 	canvas.add_child(_flash_rect)
 
 	_update_status()
+	_refresh_shop_hint()
 
 func _build_tooltip_panel() -> Panel:
 	var panel := Panel.new()
@@ -1115,6 +1131,7 @@ func _enter_shop_phase() -> void:
 	_sell_btn.disabled    = false
 	_upgrade_btn.disabled = false
 	_refresh_ready_gate()
+	_refresh_shop_hint()
 
 func _start_combat() -> void:
 	if phase != Phase.SHOP_PHASE:
@@ -1122,8 +1139,11 @@ func _start_combat() -> void:
 	if not _has_non_starter_module():
 		print("[Shop] READY blocked: place at least one non-starter module first.")
 		_refresh_ready_gate()
+		_ready_hint_label.modulate = Color(1.0, 0.35, 0.25)
 		return
 	phase = Phase.COMBAT
+	_refresh_shop_hint()
+	_ready_hint_label.text = ""
 	_action_btn.disabled  = true
 	_reroll_btn.disabled  = true
 	_sell_btn.disabled    = true
@@ -1192,11 +1212,14 @@ func _on_combat_ended(result: Dictionary) -> void:
 	_update_status("Last: %s" % outcome_text)
 	_action_btn.text     = "NEXT ROUND"
 	_action_btn.disabled = false
+	_ready_hint_label.text = "Review combat log, then press NEXT ROUND."
+	_ready_hint_label.modulate = Color(0.68, 0.72, 0.84)
 
 func _enter_run_over() -> void:
 	phase = Phase.RUN_OVER
 	GameLogger.log_run_end(GameState.current_round - 1, GameState.total_wins, GameState.total_losses, GameState.mmr)
 	_action_btn.disabled = true
+	_ready_hint_label.text = ""
 	var stats_lbl: Label = _run_over_panel.get_node("StatsLabel")
 	stats_lbl.text = (
 		"Rounds survived: %d\n" +
@@ -1244,6 +1267,7 @@ func _on_module_selected(mod: Module) -> void:
 	_selected_offer = mod
 	player_grid_view.set_mode_overlay("")
 	player_grid_view.highlight_valid(mod, player_grid)
+	_refresh_shop_hint()
 
 func _on_player_cell_clicked(pos: Vector2i) -> void:
 	if phase != Phase.SHOP_PHASE:
@@ -1265,6 +1289,7 @@ func _on_player_cell_clicked(pos: Vector2i) -> void:
 		player_grid_view.refresh(player_grid)
 		hud_panel.refresh(player_grid)
 		_refresh_ready_gate()
+		_refresh_shop_hint()
 		print("[Sell] Sold: %s ★%d for %dg" % [mod.display_name, mod.star_level, refund])
 		return
 
@@ -1285,6 +1310,7 @@ func _on_player_cell_clicked(pos: Vector2i) -> void:
 		player_grid_view.refresh(player_grid)
 		hud_panel.refresh(player_grid)
 		_refresh_ready_gate()
+		_refresh_shop_hint()
 		print("[Upgrade] %s → ★%d (%dg spent)" % [mod.display_name, mod.star_level, ucost])
 		return
 
@@ -1320,6 +1346,7 @@ func _on_sell_pressed() -> void:
 		_sell_btn.text = "SELL MODULE"
 		_style_btn(_sell_btn, Color("5a1010"), Color("8a2020"))   # back to dim red
 		player_grid_view.set_mode_overlay("")
+	_refresh_shop_hint()
 
 func _on_upgrade_pressed() -> void:
 	if phase != Phase.SHOP_PHASE:
@@ -1339,6 +1366,7 @@ func _on_upgrade_pressed() -> void:
 		_upgrade_btn.text = "UPGRADE (★)"
 		_style_btn(_upgrade_btn, Color("4a3a08"), Color("7a6010"))  # back to dim gold
 		player_grid_view.set_mode_overlay("")
+	_refresh_shop_hint()
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -1407,9 +1435,31 @@ func _refresh_ready_gate() -> void:
 	_action_btn.text = "READY" if can_ready else "READY (Need 1 module)"
 	_action_btn.disabled = not can_ready
 	if can_ready:
+		_ready_hint_label.text = "Build locked in. Press READY to fight."
+		_ready_hint_label.modulate = Color(0.58, 0.84, 0.58)
 		_update_status()
 	else:
+		_ready_hint_label.text = "Place 1 non-starter module before combat"
+		_ready_hint_label.modulate = Color(0.90, 0.56, 0.20)
 		_update_status("Place at least 1 non-starter module")
+
+func _refresh_shop_hint() -> void:
+	if _shop_hint_label == null:
+		return
+	if phase != Phase.SHOP_PHASE:
+		_shop_hint_label.visible = false
+		return
+	_shop_hint_label.visible = true
+	if _has_non_starter_module():
+		_shop_hint_label.text = "Tip: Drag cards to grid, or click card then highlighted cell."
+		_shop_hint_label.modulate = Color(0.70, 0.72, 0.78)
+		return
+	if _selected_offer == null:
+		_shop_hint_label.text = "Step 1/2: Select a module from the shop to preview valid cells."
+		_shop_hint_label.modulate = Color(0.86, 0.78, 0.52)
+		return
+	_shop_hint_label.text = "Step 2/2: Place it on a highlighted cell to unlock READY."
+	_shop_hint_label.modulate = Color(0.96, 0.86, 0.48)
 
 func _register_grb_commands() -> void:
 	var cmds := get_node_or_null("/root/GRBCommands")
@@ -1759,12 +1809,12 @@ func _try_load_ghost(round_num: int) -> MechGrid:
 
 # ── Public API (called by future UI nodes) ─────────────────────────────────
 
-func _buy_module(mod: Module) -> bool:
+func _buy_module_internal(mod: Module) -> bool:
 	if phase != Phase.SHOP_PHASE:
 		return false
 	return GameState.spend_gold(mod.cost)
 
-func _place_module(pos: Vector2i, mod: Module) -> bool:
+func _place_module_internal(pos: Vector2i, mod: Module) -> bool:
 	if phase != Phase.SHOP_PHASE:
 		return false
 	if player_grid.place_module(pos, mod):
@@ -1781,10 +1831,10 @@ func purchase_and_place(offer_slot: int, pos: Vector2i) -> bool:
 		return false
 	if not player_grid.can_place(pos, mod):
 		return false
-	if not _buy_module(mod):
+	if not _buy_module_internal(mod):
 		print("[Shop] Not enough gold (need %d, have %d)" % [mod.cost, GameState.gold])
 		return false
-	if not _place_module(pos, mod):
+	if not _place_module_internal(pos, mod):
 		# Placement failed after spend (should be rare). Refund to keep state valid.
 		GameState.gold += mod.cost
 		GameState.gold_changed.emit(GameState.gold)
@@ -1794,6 +1844,7 @@ func purchase_and_place(offer_slot: int, pos: Vector2i) -> bool:
 	_selected_offer = null
 	player_grid_view.clear_highlights()
 	_refresh_ready_gate()
+	_refresh_shop_hint()
 	print("[Shop] Placed: %s at (%d,%d) [slot %d]" % [mod.display_name, pos.x, pos.y, offer_slot])
 	return true
 

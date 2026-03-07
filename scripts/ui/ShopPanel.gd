@@ -46,6 +46,8 @@ func show_offers(offers: Array[Module]) -> void:
 	_cost_labels.clear()
 	_hover_mod    = null
 	_selected_mod = null
+	_pressed_mod  = null
+	_is_dragging  = false
 	for i in range(_offers.size()):
 		var card := _build_card(_offers[i], i)
 		add_child(card)
@@ -55,7 +57,7 @@ func get_selected() -> Module:
 	return _selected_mod
 
 func get_selected_slot() -> int:
-	return _offers.find(_selected_mod)
+	return find_offer_slot(_selected_mod)
 
 func get_offer_count() -> int:
 	return _offers.size()
@@ -66,7 +68,12 @@ func get_offer_at(slot: int) -> Module:
 	return _offers[slot]
 
 func find_offer_slot(mod: Module) -> int:
-	return _offers.find(mod)
+	if mod == null:
+		return -1
+	for i in range(_offers.size()):
+		if is_same(_offers[i], mod):
+			return i
+	return -1
 
 func set_player_grid(grid: MechGrid) -> void:
 	_player_grid = grid
@@ -82,9 +89,9 @@ func remove_offer_at(slot: int) -> void:
 	_cards[slot].queue_free()
 	_cards.remove_at(slot)
 	_offers.remove_at(slot)
-	if _hover_mod == mod:
+	if _hover_mod != null and is_same(_hover_mod, mod):
 		_hover_mod = null
-	if _selected_mod == mod:
+	if _selected_mod != null and is_same(_selected_mod, mod):
 		_selected_mod = null
 	_refresh_selection()
 	# Cards keep their original slot x-positions so remaining slots are predictable.
@@ -239,19 +246,23 @@ func _apply_card_style(card: Panel, rarity: Module.Rarity, selected: bool, hover
 	style.bg_color = RARITY_COLORS.get(rarity, Color("282828"))
 	if hovered and not selected:
 		style.bg_color = style.bg_color.lightened(0.14)
-	style.set_corner_radius_all(6)
 	if selected:
-		style.border_color        = Color("e0e040")
+		style.bg_color = style.bg_color.lightened(0.08)
+	style.set_corner_radius_all(6)
+	card.position.y = -2.0 if selected else (-1.0 if hovered else 0.0)
+	card.z_index = 2 if selected else (1 if hovered else 0)
+	if selected:
+		style.border_color        = Color("ffd24a")
+		style.border_width_left   = 3
+		style.border_width_right  = 3
+		style.border_width_top    = 3
+		style.border_width_bottom = 3
+	elif hovered:
+		style.border_color        = Color(1.0, 1.0, 1.0, 0.25)
 		style.border_width_left   = 2
 		style.border_width_right  = 2
 		style.border_width_top    = 2
 		style.border_width_bottom = 2
-	elif hovered:
-		style.border_color        = Color(1.0, 1.0, 1.0, 0.25)
-		style.border_width_left   = 1
-		style.border_width_right  = 1
-		style.border_width_top    = 1
-		style.border_width_bottom = 1
 	card.add_theme_stylebox_override("panel", style)
 
 
@@ -297,18 +308,21 @@ func _input(event: InputEvent) -> void:
 
 func _on_card_hover_enter(mod: Module) -> void:
 	_hover_mod = mod
-	var idx := _offers.find(mod)
+	var idx := find_offer_slot(mod)
 	if idx >= 0 and idx < _cards.size():
-		_apply_card_style(_cards[idx], mod.rarity, mod == _selected_mod, true)
+		var selected := _selected_mod != null and is_same(_selected_mod, mod)
+		_apply_card_style(_cards[idx], mod.rarity, selected, true)
 
 func _on_card_hover_exit(mod: Module) -> void:
-	if _hover_mod == mod:
+	if _hover_mod != null and is_same(_hover_mod, mod):
 		_hover_mod = null
-	var idx := _offers.find(mod)
+	var idx := find_offer_slot(mod)
 	if idx >= 0 and idx < _cards.size():
-		_apply_card_style(_cards[idx], mod.rarity, mod == _selected_mod, false)
+		var selected := _selected_mod != null and is_same(_selected_mod, mod)
+		_apply_card_style(_cards[idx], mod.rarity, selected, false)
 
 func _refresh_selection() -> void:
 	for i in range(mini(_cards.size(), _offers.size())):
-		var hovered := (_offers[i] == _hover_mod)
-		_apply_card_style(_cards[i], _offers[i].rarity, _offers[i] == _selected_mod, hovered)
+		var hovered := _hover_mod != null and is_same(_offers[i], _hover_mod)
+		var selected := _selected_mod != null and is_same(_offers[i], _selected_mod)
+		_apply_card_style(_cards[i], _offers[i].rarity, selected, hovered)
