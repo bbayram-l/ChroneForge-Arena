@@ -1,0 +1,19 @@
+[
+  {
+    "id": "codex_autoplay_dense_view",
+    "name": "Codex: Autoplay Dense Cable/Image View",
+    "goal": "Run deterministic autoplay and capture a dense board state for cable and image checks",
+    "estimated_time_sec": 15,
+    "tier_required": 2,
+    "steps": [
+      {"action": "runtime_info"},
+      {"action": "call_method", "node": "MainMenu", "method": "_on_play", "args": []},
+      {"action": "wait", "ms": 800},
+      {"action": "call_method", "node": "Main", "method": "_grb_autoplay_10_rounds", "args": [1337, "FORTRESS_STABILIZER"]},
+      {"action": "wait", "ms": 200},
+      {"action": "runtime_info"},
+      {"action": "screenshot", "label": "after_autoplay"},
+      {"action": "check_errors", "label": "autoplay_errors"}
+    ]
+  }
+]

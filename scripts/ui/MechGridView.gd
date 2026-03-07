@@ -12,6 +12,13 @@ signal cell_unhovered
 const CELL_SIZE: int = 60
 const CELL_GAP:  int = 8
 const MODULE_ART_PATH_FMT: String = "res://assets/modules/%s.png"
+const CELL_OUTER_INSET: float = 0.0
+const CELL_INNER_INSET: float = 3.0
+const CELL_OUTER_CHAMFER: int = 10
+const CELL_INNER_CHAMFER: int = 7
+const CELL_ART_INSET: float = 1.0
+const CELL_ART_BOTTOM_GAP: float = 1.0
+const CELL_ART_OVERSCAN: float = 11.0
 
 const CATEGORY_COLORS: Dictionary = {
 	Module.Category.STRUCTURAL: Color("6b5a3e"),
@@ -61,6 +68,7 @@ var _cable_leaf_tips: PackedVector2Array = PackedVector2Array()
 var _struct_lines: Array     = []           # [{a,b,c,w}]
 var _struct_rivets: Array    = []           # [{p,r}]
 var _module_texture_cache: Dictionary = {}  # module_id -> Texture2D|null
+var _art_mask_material: ShaderMaterial = null
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -108,22 +116,77 @@ func _build() -> void:
 			var panel := Panel.new()
 			panel.position = Vector2(float(x * step), float(y * step))
 			panel.size     = Vector2(float(CELL_SIZE), float(CELL_SIZE))
-			panel.clip_contents = true
-			_apply_style(panel, EMPTY_COLOR)
+			panel.clip_contents = false
+			_apply_container_style(panel)
+
+			var outer_frame := Panel.new()
+			outer_frame.name = "OuterFrame"
+			outer_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			outer_frame.offset_left = CELL_OUTER_INSET
+			outer_frame.offset_top = CELL_OUTER_INSET
+			outer_frame.offset_right = -CELL_OUTER_INSET
+			outer_frame.offset_bottom = -CELL_OUTER_INSET
+			outer_frame.mouse_filter = MOUSE_FILTER_IGNORE
+			panel.add_child(outer_frame)
+
+			var inner_plate := Panel.new()
+			inner_plate.name = "InnerPlate"
+			inner_plate.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			inner_plate.offset_left = CELL_INNER_INSET
+			inner_plate.offset_top = CELL_INNER_INSET
+			inner_plate.offset_right = -CELL_INNER_INSET
+			inner_plate.offset_bottom = -CELL_INNER_INSET
+			inner_plate.mouse_filter = MOUSE_FILTER_IGNORE
+			inner_plate.clip_contents = true
+			outer_frame.add_child(inner_plate)
+
+			var art_frame := Panel.new()
+			art_frame.name = "ArtFrame"
+			art_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			art_frame.offset_left = CELL_ART_INSET
+			art_frame.offset_top = CELL_ART_INSET
+			art_frame.offset_right = -CELL_ART_INSET
+			art_frame.offset_bottom = -CELL_ART_BOTTOM_GAP
+			art_frame.clip_contents = true
+			art_frame.mouse_filter = MOUSE_FILTER_IGNORE
+			inner_plate.add_child(art_frame)
 
 			var art := TextureRect.new()
 			art.name = "Art"
 			art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-			art.offset_left = 1.0
-			art.offset_top = 1.0
-			art.offset_right = -1.0
-			art.offset_bottom = -1.0
+			art.offset_left = -CELL_ART_OVERSCAN
+			art.offset_top = -CELL_ART_OVERSCAN
+			art.offset_right = CELL_ART_OVERSCAN
+			art.offset_bottom = CELL_ART_OVERSCAN
 			art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			art.stretch_mode = TextureRect.STRETCH_SCALE
 			art.mouse_filter = MOUSE_FILTER_IGNORE
-			panel.add_child(art)
+			art.material = _get_art_mask_material()
+			art_frame.add_child(art)
 
-			var info_bg := ColorRect.new()
+			var art_fallback := Label.new()
+			art_fallback.name = "ArtFallback"
+			art_fallback.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			art_fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			art_fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			art_fallback.add_theme_font_size_override("font_size", 16)
+			art_fallback.add_theme_color_override("font_color", Color(0.76, 0.84, 0.92, 0.40))
+			art_fallback.mouse_filter = MOUSE_FILTER_IGNORE
+			art_frame.add_child(art_fallback)
+
+			for mask_name: String in ["MaskTL", "MaskTR", "MaskBL", "MaskBR"]:
+				var corner_mask := Polygon2D.new()
+				corner_mask.name = mask_name
+				corner_mask.color = Color(0.0, 0.0, 0.0, 0.0)
+				art_frame.add_child(corner_mask)
+
+			var art_edge := Panel.new()
+			art_edge.name = "ArtEdge"
+			art_edge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			art_edge.mouse_filter = MOUSE_FILTER_IGNORE
+			art_frame.add_child(art_edge)
+
+			var info_bg := Panel.new()
 			info_bg.name = "InfoBg"
 			info_bg.anchor_left = 0.0
 			info_bg.anchor_top = 1.0
@@ -133,9 +196,8 @@ func _build() -> void:
 			info_bg.offset_top = -18.0
 			info_bg.offset_right = -1.0
 			info_bg.offset_bottom = -1.0
-			info_bg.color = Color(0.04, 0.05, 0.06, 0.72)
 			info_bg.mouse_filter = MOUSE_FILTER_IGNORE
-			panel.add_child(info_bg)
+			inner_plate.add_child(info_bg)
 
 			var label := Label.new()
 			label.name = "InfoLabel"
@@ -152,7 +214,7 @@ func _build() -> void:
 			label.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.02, 0.95))
 			label.add_theme_constant_override("outline_size", 2)
 			label.mouse_filter = MOUSE_FILTER_IGNORE
-			panel.add_child(label)
+			inner_plate.add_child(label)
 
 			var pos := Vector2i(x, y)
 			panel.gui_input.connect(_on_cell_gui_input.bind(pos))
@@ -282,8 +344,8 @@ func _draw() -> void:
 					var cell := _current_grid.get_cell(Vector2i(cx, cy))
 					if not cell.is_empty() and cat_colors.has(cell.module.category):
 						var px := Vector2(float(cx), float(cy)) * step
-						draw_rect(Rect2(px, Vector2(float(CELL_SIZE), float(CELL_SIZE))),
-							cat_colors[cell.module.category], false, 2.0)
+						var r := Rect2(px + Vector2(1.0, 1.0), Vector2(float(CELL_SIZE - 2), float(CELL_SIZE - 2)))
+						_draw_chamfer_outline(r, cat_colors[cell.module.category], 2.0, float(CELL_OUTER_CHAMFER))
 
 ## Draw cached structural seam/rivet overlays for a more industrial mech panel look.
 func _draw_structural_overlay() -> void:
@@ -647,6 +709,24 @@ func _append_branch_segment(start: Vector2, end: Vector2, thickness: float, seed
 		^ int(end.y * 47.0) * 265443576
 	)
 	var side: float = -1.0 if _rand01(spatial_seed, 11) < 0.5 else 1.0
+	# Adjacent anchors can become visually "missing" because only the inter-cell gap is visible.
+	# For very short spans, route out into open space first so the cable remains readable.
+	if len <= 12.0:
+		var escape: float = lerpf(10.0, 18.0, _rand01(spatial_seed, 67)) * side
+		var shoulder: float = lerpf(2.0, 5.0, _rand01(spatial_seed, 71))
+		var mid_a := start + perp * escape + dir * shoulder
+		var mid_b := end + perp * escape - dir * shoulder
+		var short_pts := PackedVector2Array([start, mid_a, mid_b, end])
+		_cable_segments.append({
+			"pts": short_pts,
+			"thickness": thickness,
+			"phase": _rand01(spatial_seed, 23) * TAU,
+			"speed": lerpf(0.20, 0.46, _rand01(spatial_seed, 29)),
+			"leaf_tip": leaf_tip,
+		})
+		if leaf_tip:
+			_cable_leaf_tips.append(end)
+		return
 	var bend: float = lerpf(4.4, 12.8, _rand01(spatial_seed, 13)) * side
 	if len > float(CELL_SIZE + CELL_GAP):
 		bend *= 1.25
@@ -739,6 +819,23 @@ func _offset_polyline(pts: PackedVector2Array, delta: Vector2) -> PackedVector2A
 		out.append(p + delta)
 	return out
 
+func _draw_chamfer_outline(rect: Rect2, color: Color, width: float, cut: float) -> void:
+	var c: float = clamp(cut, 0.0, minf(rect.size.x, rect.size.y) * 0.45)
+	var p := rect.position
+	var s := rect.size
+	var pts := PackedVector2Array([
+		p + Vector2(c, 0.0),
+		p + Vector2(s.x - c, 0.0),
+		p + Vector2(s.x, c),
+		p + Vector2(s.x, s.y - c),
+		p + Vector2(s.x - c, s.y),
+		p + Vector2(c, s.y),
+		p + Vector2(0.0, s.y - c),
+		p + Vector2(0.0, c),
+		p + Vector2(c, 0.0),
+	])
+	draw_polyline(pts, color, width, true)
+
 func _add_struct_line(a: Vector2, b: Vector2, col: Color, w: float) -> void:
 	_struct_lines.append({"a": a, "b": b, "c": col, "w": w})
 
@@ -780,9 +877,18 @@ func _redraw_cell(pos: Vector2i) -> void:
 		return
 	var cell:  GridCell = _current_grid.get_cell(pos)
 	var panel: Panel    = _panels[pos.y][pos.x]
-	var art: TextureRect = panel.get_node("Art") as TextureRect
-	var info_bg: ColorRect = panel.get_node("InfoBg") as ColorRect
-	var label: Label = panel.get_node("InfoLabel") as Label
+	var outer_frame: Panel = panel.get_node("OuterFrame") as Panel
+	var inner_plate: Panel = panel.get_node("OuterFrame/InnerPlate") as Panel
+	var art_frame: Panel = panel.get_node("OuterFrame/InnerPlate/ArtFrame") as Panel
+	var art: TextureRect = panel.get_node("OuterFrame/InnerPlate/ArtFrame/Art") as TextureRect
+	var art_fallback: Label = panel.get_node("OuterFrame/InnerPlate/ArtFrame/ArtFallback") as Label
+	var mask_tl: Polygon2D = panel.get_node("OuterFrame/InnerPlate/ArtFrame/MaskTL") as Polygon2D
+	var mask_tr: Polygon2D = panel.get_node("OuterFrame/InnerPlate/ArtFrame/MaskTR") as Polygon2D
+	var mask_bl: Polygon2D = panel.get_node("OuterFrame/InnerPlate/ArtFrame/MaskBL") as Polygon2D
+	var mask_br: Polygon2D = panel.get_node("OuterFrame/InnerPlate/ArtFrame/MaskBR") as Polygon2D
+	var art_edge: Panel = panel.get_node("OuterFrame/InnerPlate/ArtFrame/ArtEdge") as Panel
+	var info_bg: Panel = panel.get_node("OuterFrame/InnerPlate/InfoBg") as Panel
+	var label: Label = panel.get_node("OuterFrame/InnerPlate/InfoLabel") as Label
 
 	var base: Color = EMPTY_COLOR if cell.is_empty() else CATEGORY_COLORS.get(cell.module.category, EMPTY_COLOR)
 	if not cell.is_empty() and cell.module.disabled:
@@ -816,24 +922,49 @@ func _redraw_cell(pos: Vector2i) -> void:
 				overlay_border_w = 2
 				final_color      = base.lightened(0.1)
 
-	_apply_style(panel, final_color, overlay_border, overlay_border_w)
+	_apply_hybrid_style(outer_frame, inner_plate, final_color, overlay_border, overlay_border_w)
+	_apply_art_frame_style(art_frame, final_color)
+	_apply_art_corner_masks(art_frame, mask_tl, mask_tr, mask_bl, mask_br, final_color)
+	_apply_art_edge_style(art_edge, final_color)
 	if cell.is_empty():
 		if art != null:
 			art.texture = null
 			art.visible = false
+		if art_fallback != null:
+			art_fallback.text = ""
+			art_fallback.visible = false
+		if art_frame != null:
+			art_frame.visible = false
 		if info_bg != null:
 			info_bg.visible = false
 		label.text = ""
 	else:
+		if art_frame != null:
+			art_frame.visible = true
 		if art != null:
 			var tex: Texture2D = _get_module_texture(cell.module.id)
 			art.texture = tex
 			art.visible = tex != null
 			art.modulate = Color(1.0, 1.0, 1.0, 0.40 if cell.module.disabled else 0.96)
+			if art_fallback != null:
+				if tex == null:
+					art_fallback.text = SynergySystem.category_icon(cell.module.category)
+					art_fallback.visible = true
+				else:
+					art_fallback.text = ""
+					art_fallback.visible = false
 		var stars := "★".repeat(cell.module.star_level - 1)
 		label.text = cell.module.display_name + ("\n" + stars if stars else "")
 		if info_bg != null:
 			info_bg.visible = true
+			var bar_style := StyleBoxFlat.new()
+			bar_style.bg_color = Color(0.04, 0.05, 0.06, 0.74)
+			bar_style.border_color = Color(0.70, 0.78, 0.88, 0.16)
+			bar_style.border_width_top = 1
+			bar_style.corner_detail = 1
+			bar_style.corner_radius_bottom_left = maxi(0, CELL_INNER_CHAMFER - 2)
+			bar_style.corner_radius_bottom_right = maxi(0, CELL_INNER_CHAMFER - 2)
+			info_bg.add_theme_stylebox_override("panel", bar_style)
 
 func _get_module_texture(module_id: String) -> Texture2D:
 	if _module_texture_cache.has(module_id):
@@ -841,9 +972,181 @@ func _get_module_texture(module_id: String) -> Texture2D:
 	var path: String = MODULE_ART_PATH_FMT % module_id
 	var tex: Texture2D = null
 	if ResourceLoader.exists(path):
-		tex = load(path) as Texture2D
+		var loaded: Texture2D = load(path) as Texture2D
+		tex = _crop_texture_visible_bounds(loaded)
 	_module_texture_cache[module_id] = tex
 	return tex
+
+func _crop_texture_visible_bounds(tex: Texture2D) -> Texture2D:
+	if tex == null:
+		return null
+	var img: Image = tex.get_image()
+	if img == null or img.is_empty():
+		return tex
+	img.convert(Image.FORMAT_RGBA8)
+	var w: int = img.get_width()
+	var h: int = img.get_height()
+	var min_x: int = w
+	var min_y: int = h
+	var max_x: int = -1
+	var max_y: int = -1
+	var c0: Color = img.get_pixel(0, 0)
+	var c1: Color = img.get_pixel(maxi(0, w - 1), 0)
+	var c2: Color = img.get_pixel(0, maxi(0, h - 1))
+	var c3: Color = img.get_pixel(maxi(0, w - 1), maxi(0, h - 1))
+	var bg: Color = Color(
+		(c0.r + c1.r + c2.r + c3.r) * 0.25,
+		(c0.g + c1.g + c2.g + c3.g) * 0.25,
+		(c0.b + c1.b + c2.b + c3.b) * 0.25,
+		(c0.a + c1.a + c2.a + c3.a) * 0.25
+	)
+	for y in range(h):
+		for x in range(w):
+			var p: Color = img.get_pixel(x, y)
+			var d: float = absf(p.r - bg.r) + absf(p.g - bg.g) + absf(p.b - bg.b) + absf(p.a - bg.a)
+			if p.a > 0.03 and d > 0.18:
+				min_x = mini(min_x, x)
+				min_y = mini(min_y, y)
+				max_x = maxi(max_x, x)
+				max_y = maxi(max_y, y)
+	if max_x < min_x or max_y < min_y:
+		for y in range(h):
+			for x in range(w):
+				if img.get_pixel(x, y).a > 0.03:
+					min_x = mini(min_x, x)
+					min_y = mini(min_y, y)
+					max_x = maxi(max_x, x)
+					max_y = maxi(max_y, y)
+	if max_x < min_x or max_y < min_y:
+		return tex
+	var rect := Rect2i(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
+	if rect.size.x <= 0 or rect.size.y <= 0:
+		return tex
+	var cropped := Image.create(rect.size.x, rect.size.y, false, Image.FORMAT_RGBA8)
+	cropped.blit_rect(img, rect, Vector2i.ZERO)
+	return ImageTexture.create_from_image(cropped)
+
+func _apply_container_style(panel: Panel) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0)
+	style.border_width_left = 0
+	style.border_width_right = 0
+	style.border_width_top = 0
+	style.border_width_bottom = 0
+	panel.add_theme_stylebox_override("panel", style)
+
+func _apply_hybrid_style(outer_frame: Panel, inner_plate: Panel, color: Color, border: Color = Color.TRANSPARENT, border_w: int = 1) -> void:
+	if outer_frame == null or inner_plate == null:
+		return
+	var outer_style := StyleBoxFlat.new()
+	outer_style.bg_color = color.darkened(0.12)
+	outer_style.corner_detail = 1
+	outer_style.corner_radius_top_left = CELL_OUTER_CHAMFER
+	outer_style.corner_radius_top_right = CELL_OUTER_CHAMFER
+	outer_style.corner_radius_bottom_left = CELL_OUTER_CHAMFER
+	outer_style.corner_radius_bottom_right = CELL_OUTER_CHAMFER
+	if border != Color.TRANSPARENT and border_w > 1:
+		outer_style.border_color        = border
+		outer_style.border_width_left   = border_w
+		outer_style.border_width_right  = border_w
+		outer_style.border_width_top    = border_w
+		outer_style.border_width_bottom = border_w
+	else:
+		outer_style.border_color        = color.lightened(0.28)
+		outer_style.border_width_left   = 1
+		outer_style.border_width_right  = 1
+		outer_style.border_width_top    = 1
+		outer_style.border_width_bottom = 1
+	outer_frame.add_theme_stylebox_override("panel", outer_style)
+
+	var inner_style := StyleBoxFlat.new()
+	inner_style.bg_color = color.darkened(0.24)
+	inner_style.corner_detail = 1
+	inner_style.corner_radius_top_left = CELL_INNER_CHAMFER
+	inner_style.corner_radius_top_right = CELL_INNER_CHAMFER
+	inner_style.corner_radius_bottom_left = CELL_INNER_CHAMFER
+	inner_style.corner_radius_bottom_right = CELL_INNER_CHAMFER
+	inner_style.border_color = color.lightened(0.08)
+	inner_style.border_width_left = 1
+	inner_style.border_width_right = 1
+	inner_style.border_width_top = 1
+	inner_style.border_width_bottom = 1
+	inner_plate.add_theme_stylebox_override("panel", inner_style)
+
+func _apply_art_frame_style(art_frame: Panel, color: Color) -> void:
+	if art_frame == null:
+		return
+	var art_style := StyleBoxFlat.new()
+	art_style.bg_color = color.darkened(0.34)
+	art_style.corner_detail = 1
+	art_style.corner_radius_top_left = maxi(1, CELL_INNER_CHAMFER - 2)
+	art_style.corner_radius_top_right = maxi(1, CELL_INNER_CHAMFER - 2)
+	art_style.corner_radius_bottom_left = maxi(1, CELL_INNER_CHAMFER - 3)
+	art_style.corner_radius_bottom_right = maxi(1, CELL_INNER_CHAMFER - 3)
+	art_style.border_color = Color(0, 0, 0, 0)
+	art_style.border_width_left = 0
+	art_style.border_width_right = 0
+	art_style.border_width_top = 0
+	art_style.border_width_bottom = 0
+	art_frame.add_theme_stylebox_override("panel", art_style)
+
+func _apply_art_corner_masks(art_frame: Panel, mask_tl: Polygon2D, mask_tr: Polygon2D, mask_bl: Polygon2D, mask_br: Polygon2D, color: Color) -> void:
+	if art_frame == null:
+		return
+	var cut: float = float(maxi(2, CELL_INNER_CHAMFER - 1))
+	var w: float = art_frame.size.x
+	var h: float = art_frame.size.y
+	var mask_col: Color = color.darkened(0.34)
+
+	if mask_tl != null:
+		mask_tl.polygon = PackedVector2Array([Vector2(0.0, 0.0), Vector2(cut, 0.0), Vector2(0.0, cut)])
+		mask_tl.color = mask_col
+	if mask_tr != null:
+		mask_tr.polygon = PackedVector2Array([Vector2(w, 0.0), Vector2(w - cut, 0.0), Vector2(w, cut)])
+		mask_tr.color = mask_col
+	if mask_bl != null:
+		mask_bl.polygon = PackedVector2Array([Vector2(0.0, h), Vector2(cut, h), Vector2(0.0, h - cut)])
+		mask_bl.color = mask_col
+	if mask_br != null:
+		mask_br.polygon = PackedVector2Array([Vector2(w, h), Vector2(w - cut, h), Vector2(w, h - cut)])
+		mask_br.color = mask_col
+
+func _apply_art_edge_style(art_edge: Panel, color: Color) -> void:
+	if art_edge == null:
+		return
+	var edge_style := StyleBoxFlat.new()
+	edge_style.bg_color = Color(0, 0, 0, 0)
+	edge_style.corner_detail = 1
+	edge_style.corner_radius_top_left = maxi(1, CELL_INNER_CHAMFER - 2)
+	edge_style.corner_radius_top_right = maxi(1, CELL_INNER_CHAMFER - 2)
+	edge_style.corner_radius_bottom_left = maxi(1, CELL_INNER_CHAMFER - 3)
+	edge_style.corner_radius_bottom_right = maxi(1, CELL_INNER_CHAMFER - 3)
+	edge_style.border_color = color.lightened(0.16)
+	edge_style.border_width_left = 1
+	edge_style.border_width_right = 1
+	edge_style.border_width_top = 1
+	edge_style.border_width_bottom = 1
+	art_edge.add_theme_stylebox_override("panel", edge_style)
+
+func _get_art_mask_material() -> ShaderMaterial:
+	if _art_mask_material != null:
+		return _art_mask_material
+	var shader := Shader.new()
+	shader.code = "shader_type canvas_item;\n" \
+		+ "uniform float cut = 0.14;\n" \
+		+ "void fragment() {\n" \
+		+ "    vec4 col = texture(TEXTURE, UV);\n" \
+		+ "    bool outside = false;\n" \
+		+ "    if ((UV.x + UV.y) < cut) outside = true;\n" \
+		+ "    if (((1.0 - UV.x) + UV.y) < cut) outside = true;\n" \
+		+ "    if ((UV.x + (1.0 - UV.y)) < cut) outside = true;\n" \
+		+ "    if (((1.0 - UV.x) + (1.0 - UV.y)) < cut) outside = true;\n" \
+		+ "    if (outside) { col.a = 0.0; }\n" \
+		+ "    COLOR = col;\n" \
+		+ "}\n"
+	_art_mask_material = ShaderMaterial.new()
+	_art_mask_material.shader = shader
+	return _art_mask_material
 
 func _apply_style(panel: Panel, color: Color, border: Color = Color.TRANSPARENT, border_w: int = 1) -> void:
 	var style := StyleBoxFlat.new()

@@ -13,6 +13,7 @@ const GAP:             int   = 8
 const IMAGE_H:         int   = 56
 const DRAG_THRESHOLD:  float = 8.0
 const MODULE_ART_PATH_FMT: String = "res://assets/modules/%s.png"
+const CARD_ART_OVERSCAN: float = 0.0
 
 const RARITY_COLORS: Dictionary = {
 	Module.Rarity.COMMON:    Color("282828"),
@@ -137,10 +138,17 @@ func _build_card(mod: Module, index: int) -> Panel:
 		var img := TextureRect.new()
 		# Fill the img_bg completely — no manual coordinate math needed.
 		img.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		img.offset_left = -CARD_ART_OVERSCAN
+		img.offset_top = -CARD_ART_OVERSCAN
+		img.offset_right = CARD_ART_OVERSCAN
+		img.offset_bottom = CARD_ART_OVERSCAN
 		img.texture      = tex
-		img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		img.expand_mode  = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+		img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		img.mouse_filter = MOUSE_FILTER_IGNORE
 		img_bg.add_child(img)   # child of img_bg, not card
+	else:
+		img_bg.add_child(_build_card_art_fallback(mod))
 
 	# ── Category badge (top-right, over image) ───────────────────────────────
 	var badge_bg := ColorRect.new()
@@ -248,9 +256,83 @@ func _get_module_texture(module_id: String) -> Texture2D:
 	var path: String = MODULE_ART_PATH_FMT % module_id
 	var tex: Texture2D = null
 	if ResourceLoader.exists(path):
-		tex = load(path) as Texture2D
+		var loaded: Texture2D = load(path) as Texture2D
+		tex = _crop_texture_visible_bounds(loaded)
 	_module_texture_cache[module_id] = tex
 	return tex
+
+func _build_card_art_fallback(mod: Module) -> Control:
+	var wrap := Control.new()
+	wrap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	wrap.mouse_filter = MOUSE_FILTER_IGNORE
+
+	var tone: Color = MechGridView.CATEGORY_COLORS.get(mod.category, Color("333333"))
+	var bg := ColorRect.new()
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(tone.r, tone.g, tone.b, 0.42)
+	bg.mouse_filter = MOUSE_FILTER_IGNORE
+	wrap.add_child(bg)
+
+	var icon := Label.new()
+	icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	icon.text = SynergySystem.category_icon(mod.category)
+	icon.add_theme_font_size_override("font_size", 24)
+	icon.add_theme_color_override("font_color", Color(0.92, 0.94, 0.98, 0.72))
+	icon.mouse_filter = MOUSE_FILTER_IGNORE
+	wrap.add_child(icon)
+
+	return wrap
+
+func _crop_texture_visible_bounds(tex: Texture2D) -> Texture2D:
+	if tex == null:
+		return null
+	var img: Image = tex.get_image()
+	if img == null or img.is_empty():
+		return tex
+	img.convert(Image.FORMAT_RGBA8)
+	var w: int = img.get_width()
+	var h: int = img.get_height()
+	var min_x: int = w
+	var min_y: int = h
+	var max_x: int = -1
+	var max_y: int = -1
+	var c0: Color = img.get_pixel(0, 0)
+	var c1: Color = img.get_pixel(maxi(0, w - 1), 0)
+	var c2: Color = img.get_pixel(0, maxi(0, h - 1))
+	var c3: Color = img.get_pixel(maxi(0, w - 1), maxi(0, h - 1))
+	var bg: Color = Color(
+		(c0.r + c1.r + c2.r + c3.r) * 0.25,
+		(c0.g + c1.g + c2.g + c3.g) * 0.25,
+		(c0.b + c1.b + c2.b + c3.b) * 0.25,
+		(c0.a + c1.a + c2.a + c3.a) * 0.25
+	)
+	for y in range(h):
+		for x in range(w):
+			var p: Color = img.get_pixel(x, y)
+			var d: float = absf(p.r - bg.r) + absf(p.g - bg.g) + absf(p.b - bg.b) + absf(p.a - bg.a)
+			if p.a > 0.03 and d > 0.18:
+				min_x = mini(min_x, x)
+				min_y = mini(min_y, y)
+				max_x = maxi(max_x, x)
+				max_y = maxi(max_y, y)
+	if max_x < min_x or max_y < min_y:
+		for y in range(h):
+			for x in range(w):
+				if img.get_pixel(x, y).a > 0.03:
+					min_x = mini(min_x, x)
+					min_y = mini(min_y, y)
+					max_x = maxi(max_x, x)
+					max_y = maxi(max_y, y)
+	if max_x < min_x or max_y < min_y:
+		return tex
+	var rect := Rect2i(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
+	if rect.size.x <= 0 or rect.size.y <= 0:
+		return tex
+	var cropped := Image.create(rect.size.x, rect.size.y, false, Image.FORMAT_RGBA8)
+	cropped.blit_rect(img, rect, Vector2i.ZERO)
+	return ImageTexture.create_from_image(cropped)
 
 
 func _apply_card_style(card: Panel, rarity: Module.Rarity, selected: bool, hovered: bool) -> void:
