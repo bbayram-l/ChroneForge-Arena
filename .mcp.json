@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "godot-runtime-bridge": {
+      "command": "node",
+      "args": ["D:/GameDev/godot-runtime-bridge/mcp/index.js"],
+      "env": {
+        "GODOT_PATH": "D:/GameDev/Godot_v4.6-stable_win64.exe"
+      }
+    }
+  }
+}

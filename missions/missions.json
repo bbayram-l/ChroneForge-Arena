@@ -1,0 +1,281 @@
+[
+  {
+    "id": "smoke_test",
+    "name": "Smoke Test: Boot → First Interaction",
+    "goal": "Verify game launches, renders, and basic interaction works",
+    "estimated_time_sec": 15,
+    "steps": [
+      {"action": "runtime_info"},
+      {"action": "screenshot", "label": "boot_screen"},
+      {"action": "scene_tree", "label": "boot_tree", "max_depth": 8},
+      {"action": "find_buttons"},
+      {"action": "wait", "ms": 2000},
+      {"action": "screenshot", "label": "after_wait"},
+      {"action": "screenshot_diff", "a": "boot_screen", "b": "after_wait", "issue_title": "Game appears frozen at boot — no visible change after 2 seconds", "severity": "Major"}
+    ]
+  },
+  {
+    "id": "ui_legibility",
+    "name": "UI Legibility Scan",
+    "goal": "Capture screenshots to check text readability, contrast, and layout",
+    "estimated_time_sec": 15,
+    "steps": [
+      {"action": "screenshot", "label": "screen_1"},
+      {"action": "runtime_info"},
+      {"action": "scene_tree", "label": "ui_tree", "max_depth": 10},
+      {"action": "find_nodes", "type": "Label", "label": "all_labels"},
+      {"action": "find_nodes", "type": "RichTextLabel", "label": "all_rich_labels"},
+      {"action": "find_buttons"},
+      {"action": "wait", "ms": 3000},
+      {"action": "screenshot", "label": "screen_2"},
+      {"action": "screenshot_diff", "a": "screen_1", "b": "screen_2", "issue_title": "UI appears static — verify this is expected", "severity": "Minor"}
+    ]
+  },
+  {
+    "id": "input_sanity",
+    "name": "Input Sanity: Mouse + Keyboard",
+    "goal": "Verify core input actions respond (clicks, arrow keys, Enter, Escape)",
+    "estimated_time_sec": 15,
+    "steps": [
+      {"action": "screenshot", "label": "before_input"},
+      {"action": "click", "x": 320, "y": 200},
+      {"action": "wait", "ms": 500},
+      {"action": "screenshot", "label": "after_click"},
+      {"action": "key", "args": {"action": "ui_accept"}},
+      {"action": "wait", "ms": 500},
+      {"action": "screenshot", "label": "after_accept"},
+      {"action": "key", "args": {"action": "ui_cancel"}},
+      {"action": "wait", "ms": 500},
+      {"action": "screenshot", "label": "after_cancel"},
+      {"action": "key", "args": {"action": "ui_up"}},
+      {"action": "wait", "ms": 300},
+      {"action": "key", "args": {"action": "ui_down"}},
+      {"action": "wait", "ms": 300},
+      {"action": "key", "args": {"action": "ui_left"}},
+      {"action": "wait", "ms": 300},
+      {"action": "key", "args": {"action": "ui_right"}},
+      {"action": "wait", "ms": 500},
+      {"action": "screenshot", "label": "after_arrows"},
+      {"action": "runtime_info"}
+    ]
+  },
+  {
+    "id": "button_inventory",
+    "name": "Button Inventory Scan",
+    "goal": "Find all Button-type nodes in the scene tree and verify they are reachable",
+    "estimated_time_sec": 10,
+    "steps": [
+      {"action": "screenshot", "label": "button_scan_screen"},
+      {"action": "find_nodes", "type": "BaseButton", "label": "all_buttons"},
+      {"action": "find_nodes", "type": "Label", "label": "all_labels"},
+      {"action": "scene_tree", "label": "button_tree", "max_depth": 8},
+      {"action": "runtime_info"}
+    ]
+  },
+  {
+    "id": "resolution_check",
+    "name": "Resolution/Viewport Info",
+    "goal": "Capture viewport dimensions and verify rendering at current resolution",
+    "estimated_time_sec": 10,
+    "steps": [
+      {"action": "screenshot", "label": "resolution_capture"},
+      {"action": "runtime_info"},
+      {"action": "scene_tree", "label": "resolution_tree", "max_depth": 3}
+    ]
+  },
+  {
+    "id": "node_tree_snapshot",
+    "name": "Node Tree Snapshot + Diff",
+    "goal": "Capture scene tree at boot and after interaction for structural comparison",
+    "estimated_time_sec": 15,
+    "steps": [
+      {"action": "scene_tree", "label": "tree_boot", "max_depth": 12},
+      {"action": "screenshot", "label": "tree_boot_screen"},
+      {"action": "click", "x": 320, "y": 200},
+      {"action": "wait", "ms": 1000},
+      {"action": "key", "args": {"action": "ui_accept"}},
+      {"action": "wait", "ms": 2000},
+      {"action": "scene_tree", "label": "tree_after", "max_depth": 12},
+      {"action": "screenshot", "label": "tree_after_screen"},
+      {"action": "scene_tree_diff", "a": "tree_boot", "b": "tree_after"},
+      {"action": "runtime_info"}
+    ]
+  },
+  {
+    "id": "stuck_frame",
+    "name": "Stuck Frame Detector",
+    "goal": "Compare screenshots 1 second apart to detect frozen rendering",
+    "estimated_time_sec": 10,
+    "steps": [
+      {"action": "click", "x": 320, "y": 200},
+      {"action": "wait", "ms": 1000},
+      {"action": "screenshot", "label": "frame_a"},
+      {"action": "wait", "ms": 1000},
+      {"action": "screenshot", "label": "frame_b"},
+      {"action": "screenshot_diff", "a": "frame_a", "b": "frame_b", "issue_title": "Render appears frozen — identical frames 1s apart", "severity": "Major"},
+      {"action": "runtime_info"}
+    ]
+  },
+  {
+    "id": "flicker_stability",
+    "name": "Flicker/CRT Stability Watch",
+    "goal": "Rapid screenshot burst to detect unintended flicker or render instability",
+    "estimated_time_sec": 10,
+    "steps": [
+      {"action": "screenshot", "label": "flicker_01"},
+      {"action": "wait", "ms": 200},
+      {"action": "screenshot", "label": "flicker_02"},
+      {"action": "wait", "ms": 200},
+      {"action": "screenshot", "label": "flicker_03"},
+      {"action": "wait", "ms": 200},
+      {"action": "screenshot", "label": "flicker_04"},
+      {"action": "wait", "ms": 200},
+      {"action": "screenshot", "label": "flicker_05"},
+      {"action": "wait", "ms": 200},
+      {"action": "screenshot", "label": "flicker_06"},
+      {"action": "wait", "ms": 200},
+      {"action": "screenshot", "label": "flicker_07"},
+      {"action": "wait", "ms": 200},
+      {"action": "screenshot", "label": "flicker_08"},
+      {"action": "runtime_info"}
+    ]
+  },
+  {
+    "id": "keyboard_nav",
+    "name": "Focus + Accessibility Pass",
+    "goal": "Verify keyboard-only navigation works (Tab through UI, Enter to activate)",
+    "estimated_time_sec": 15,
+    "steps": [
+      {"action": "screenshot", "label": "focus_start"},
+      {"action": "key", "args": {"keycode": 4194306}},
+      {"action": "wait", "ms": 300},
+      {"action": "screenshot", "label": "after_tab_1"},
+      {"action": "key", "args": {"keycode": 4194306}},
+      {"action": "wait", "ms": 300},
+      {"action": "screenshot", "label": "after_tab_2"},
+      {"action": "key", "args": {"keycode": 4194306}},
+      {"action": "wait", "ms": 300},
+      {"action": "screenshot", "label": "after_tab_3"},
+      {"action": "screenshot_diff", "a": "focus_start", "b": "after_tab_1", "issue_title": "Tab key had no visible focus change", "severity": "Minor"},
+      {"action": "key", "args": {"action": "ui_accept"}},
+      {"action": "wait", "ms": 2000},
+      {"action": "screenshot", "label": "after_enter"},
+      {"action": "screenshot_diff", "a": "after_tab_3", "b": "after_enter", "issue_title": "Enter key had no visible effect after Tab navigation", "severity": "Minor"}
+    ]
+  },
+  {
+    "id": "input_spam",
+    "name": "Invalid Input Spam",
+    "goal": "Mash random keys and clicks to surface exceptions or stuck states",
+    "estimated_time_sec": 15,
+    "steps": [
+      {"action": "screenshot", "label": "before_spam"},
+      {"action": "rapid_input", "inputs": [
+        {"type": "click", "x": 50, "y": 50, "delay": 30},
+        {"type": "key", "args": {"action": "ui_accept"}, "delay": 30},
+        {"type": "click", "x": 300, "y": 200, "delay": 30},
+        {"type": "key", "args": {"action": "ui_cancel"}, "delay": 30},
+        {"type": "click", "x": 150, "y": 100, "delay": 30},
+        {"type": "key", "args": {"action": "ui_up"}, "delay": 30},
+        {"type": "click", "x": 600, "y": 350, "delay": 30},
+        {"type": "key", "args": {"action": "ui_accept"}, "delay": 30},
+        {"type": "click", "x": 10, "y": 10, "delay": 30},
+        {"type": "key", "args": {"action": "ui_down"}, "delay": 30},
+        {"type": "click", "x": 320, "y": 180, "delay": 30},
+        {"type": "key", "args": {"action": "ui_cancel"}, "delay": 30},
+        {"type": "click", "x": 500, "y": 300, "delay": 30},
+        {"type": "key", "args": {"action": "ui_accept"}, "delay": 30},
+        {"type": "click", "x": 100, "y": 300, "delay": 30}
+      ]},
+      {"action": "wait", "ms": 500},
+      {"action": "screenshot", "label": "after_spam"},
+      {"action": "runtime_info"},
+      {"action": "check_runtime", "min_fps": 5}
+    ]
+  },
+  {
+    "id": "crash_sentinel",
+    "name": "Crash/Exception Sentinel",
+    "goal": "Perform edge-case inputs (corners, out-of-bounds clicks) to verify game stays alive",
+    "estimated_time_sec": 15,
+    "steps": [
+      {"action": "runtime_info"},
+      {"action": "rapid_input", "inputs": [
+        {"type": "click", "x": 0, "y": 0, "delay": 50},
+        {"type": "click", "x": 639, "y": 359, "delay": 50},
+        {"type": "click", "x": -10, "y": -10, "delay": 50},
+        {"type": "click", "x": 999, "y": 999, "delay": 50},
+        {"type": "key", "args": {"keycode": 4194305}, "delay": 50},
+        {"type": "key", "args": {"keycode": 4194309}, "delay": 50}
+      ]},
+      {"action": "wait", "ms": 1000},
+      {"action": "screenshot", "label": "after_edge_inputs"},
+      {"action": "runtime_info"},
+      {"action": "check_runtime", "min_fps": 5}
+    ]
+  },
+  {
+    "id": "long_idle",
+    "name": "Long Idle Watch",
+    "goal": "Idle for 30 seconds to detect CPU spikes, memory leaks, or timer issues",
+    "estimated_time_sec": 40,
+    "steps": [
+      {"action": "screenshot", "label": "idle_start"},
+      {"action": "runtime_info"},
+      {"action": "wait", "ms": 10000},
+      {"action": "check_runtime", "min_fps": 10},
+      {"action": "screenshot", "label": "idle_10s"},
+      {"action": "wait", "ms": 10000},
+      {"action": "check_runtime", "min_fps": 10},
+      {"action": "screenshot", "label": "idle_20s"},
+      {"action": "wait", "ms": 10000},
+      {"action": "check_runtime", "min_fps": 10},
+      {"action": "screenshot", "label": "idle_30s"},
+      {"action": "runtime_info"}
+    ]
+  },
+  {
+    "id": "perf_profile",
+    "name": "Performance Profile Snapshot",
+    "goal": "Capture performance metrics at boot and after idle to detect regressions",
+    "estimated_time_sec": 20,
+    "steps": [
+      {"action": "grb_performance", "label": "perf_boot"},
+      {"action": "runtime_info"},
+      {"action": "screenshot", "label": "perf_boot_screen"},
+      {"action": "wait", "ms": 5000},
+      {"action": "grb_performance", "label": "perf_5s"},
+      {"action": "screenshot", "label": "perf_5s_screen"},
+      {"action": "wait", "ms": 5000},
+      {"action": "grb_performance", "label": "perf_10s"},
+      {"action": "screenshot", "label": "perf_10s_screen"},
+      {"action": "runtime_info"}
+    ]
+  },
+  {
+    "id": "audio_check",
+    "name": "Audio Bus Health Check",
+    "goal": "Verify audio buses are configured and no bus is accidentally muted",
+    "estimated_time_sec": 5,
+    "steps": [
+      {"action": "audio_state", "label": "audio_buses"},
+      {"action": "runtime_info"},
+      {"action": "screenshot", "label": "audio_check_screen"}
+    ]
+  },
+  {
+    "id": "error_sweep",
+    "name": "Error Sweep (Boot + Idle)",
+    "goal": "Check for engine errors at boot and after 10s idle to catch silent failures",
+    "estimated_time_sec": 15,
+    "steps": [
+      {"action": "check_errors", "label": "boot_errors"},
+      {"action": "runtime_info"},
+      {"action": "screenshot", "label": "error_sweep_boot"},
+      {"action": "wait", "ms": 10000},
+      {"action": "check_errors", "label": "idle_errors"},
+      {"action": "screenshot", "label": "error_sweep_idle"},
+      {"action": "runtime_info"}
+    ]
+  }
+]

@@ -1,0 +1,3 @@
+res://scenes/MainMenu.tscn
+res://scripts/ui/ShopPanel.gd
+res://scripts/ui/Main.gd

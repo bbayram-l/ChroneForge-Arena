@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"/c/Python313/python.exe\":*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:godotengine.org)",
+      "mcp__godot-runtime-bridge__grb_ping",
+      "mcp__godot-runtime-bridge__grb_press_button",
+      "mcp__godot-runtime-bridge__grb_find_nodes",
+      "mcp__godot-runtime-bridge__grb_scene_tree",
+      "mcp__godot-runtime-bridge__grb_get_property",
+      "mcp__godot-runtime-bridge__grb_screenshot",
+      "mcp__godot-runtime-bridge__grb_click",
+      "mcp__godot-runtime-bridge__grb_launch",
+      "mcp__godot-runtime-bridge__grb_get_errors",
+      "mcp__godot-runtime-bridge__grb_drag",
+      "mcp__godot-runtime-bridge__grb_call_method",
+      "mcp__godot-runtime-bridge__grb_set_property"
+    ]
+  }
+}
