@@ -27,9 +27,17 @@ const HOVER_COLOR          := Color("4a9a20")   # hovered valid cell
 const FOOTPRINT_VALID_COL  := Color(0.20, 0.85, 0.25, 0.80)   # green — can drop here
 const FOOTPRINT_INVALID_COL := Color(0.85, 0.15, 0.10, 0.80)  # red   — cannot drop
 const CABLE_ENABLE: bool   = true
+const CABLE_ANIM_FPS: float = 30.0
 const CABLE_BASE_COL       := Color(0.05, 0.06, 0.08, 0.75)
 const CABLE_SHEATH_COL     := Color(0.18, 0.22, 0.28, 0.90)
 const CABLE_HILITE_COL     := Color(0.62, 0.74, 0.86, 0.42)
+const CABLE_PULSE_COL      := Color(0.70, 0.90, 1.00, 0.70)
+const STRUCT_SEAM_LIGHT    := Color(0.72, 0.82, 0.92, 0.16)
+const STRUCT_SEAM_DARK     := Color(0.03, 0.04, 0.05, 0.42)
+const STRUCT_BRACE_DARK    := Color(0.03, 0.04, 0.05, 0.40)
+const STRUCT_BRACE_LIGHT   := Color(0.66, 0.76, 0.86, 0.12)
+const STRUCT_RIVET_DARK    := Color(0.04, 0.05, 0.06, 0.86)
+const STRUCT_RIVET_LIGHT   := Color(0.74, 0.84, 0.94, 0.36)
 
 var _panels:       Array     = []            # [y][x] → Panel
 var _title_label:  Label
@@ -42,20 +50,39 @@ var _fp_cells:     Array     = []            # Array[Vector2i] drag-footprint ce
 var _fp_valid:     bool      = false
 var _mode_overlay: String    = ""           # "sell", "upgrade", or "" for none
 var _protected:    Array     = []           # Array[Vector2i] cells immune to sell overlay
+var _cache_dirty:  bool      = true
+var _cables_active: bool     = false
+var _anim_time: float        = 0.0
+var _anim_redraw_accum: float = 0.0
+var _cable_segments: Array   = []           # [{pts,thickness,phase,speed,leaf_tip}]
+var _cable_nodes_px: PackedVector2Array = PackedVector2Array()
+var _cable_leaf_tips: PackedVector2Array = PackedVector2Array()
+var _struct_lines: Array     = []           # [{a,b,c,w}]
+var _struct_rivets: Array    = []           # [{p,r}]
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
 	_build()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# Continuously redraw only when the torque visualizer has a significant imbalance
 	# so the pulsing COM ring animates. Skipped when grid is empty.
+	var needs_redraw := false
 	if _show_com and _current_grid != null:
 		var step := float(CELL_SIZE + CELL_GAP)
 		var ideal := Vector2(MechGrid.GRID_WIDTH, MechGrid.GRID_HEIGHT) * step * 0.5
 		if (_com * step - ideal).length() > 30.0:
-			queue_redraw()
+			needs_redraw = true
+	if CABLE_ENABLE and _cables_active:
+		_anim_time += delta
+		_anim_redraw_accum += delta
+		var frame_step: float = 1.0 / CABLE_ANIM_FPS
+		if _anim_redraw_accum >= frame_step:
+			_anim_redraw_accum -= frame_step
+			needs_redraw = true
+	if needs_redraw:
+		queue_redraw()
 
 func _build() -> void:
 	_panels = []
@@ -112,6 +139,9 @@ func refresh(grid: MechGrid) -> void:
 	_show_com = not mods.is_empty()
 	if _show_com:
 		_com = PhysicsLite.new(grid).center_of_mass()
+	_cache_dirty = true
+	_anim_redraw_accum = 0.0
+	_rebuild_visual_cache()
 	for y in range(MechGrid.GRID_HEIGHT):
 		for x in range(MechGrid.GRID_WIDTH):
 			_redraw_cell(Vector2i(x, y))
@@ -171,8 +201,12 @@ func clear_drag_footprint() -> void:
 # ── Torque visualizer ───────────────────────────────────────────────────────
 
 func _draw() -> void:
-	if CABLE_ENABLE and _current_grid != null:
-		_draw_cables()
+	if _cache_dirty:
+		_rebuild_visual_cache()
+	if _current_grid != null:
+		_draw_structural_overlay()
+		if CABLE_ENABLE:
+			_draw_cables()
 	if not _show_com:
 		return
 	var step := float(CELL_SIZE + CELL_GAP)
@@ -213,115 +247,425 @@ func _draw() -> void:
 						draw_rect(Rect2(px, Vector2(float(CELL_SIZE), float(CELL_SIZE))),
 							cat_colors[cell.module.category], false, 2.0)
 
-## Draw deterministic cable bundles between occupied cells to add mech-like wiring.
-## - Links orthogonally adjacent occupied cells.
-## - Adds "bridge" links across a 1-cell gap for denser mechanical silhouettes.
-## - Skips links between cells owned by the same multi-cell module.
+## Draw cached structural seam/rivet overlays for a more industrial mech panel look.
+func _draw_structural_overlay() -> void:
+	for line_v in _struct_lines:
+		var line: Dictionary = line_v
+		var a: Vector2 = line["a"]
+		var b: Vector2 = line["b"]
+		var col: Color = line["c"]
+		var w: float = float(line["w"])
+		draw_line(a, b, col, w, true)
+	for rivet_v in _struct_rivets:
+		var rivet: Dictionary = rivet_v
+		var p: Vector2 = rivet["p"]
+		var r: float = float(rivet["r"])
+		draw_circle(p, r + 0.55, STRUCT_RIVET_DARK)
+		draw_circle(p, r, STRUCT_RIVET_LIGHT)
+
+## Draw the cached cable tree (branches + leaves) with animated shading.
 func _draw_cables() -> void:
+	for seg_v in _cable_segments:
+		var seg: Dictionary = seg_v
+		var pts: PackedVector2Array = seg["pts"]
+		if pts.size() < 2:
+			continue
+		var th: float = float(seg["thickness"])
+		var phase: float = float(seg["phase"])
+		var speed: float = float(seg["speed"])
+		var is_leaf_tip: bool = bool(seg["leaf_tip"])
+		var pulse: float = 0.5 + 0.5 * sin((_anim_time * speed * TAU) + phase)
+		var w_shell: float = 4.4 * th
+		var w_hilite: float = 1.0 * th
+		var shadow_pts := _offset_polyline(pts, Vector2(1.4, 1.4))
+		draw_polyline(shadow_pts, Color(0, 0, 0, 0.26), w_shell + 2.0, true)
+		draw_polyline(pts, CABLE_BASE_COL, w_shell + 1.4, true)
+		var sheath_col := CABLE_SHEATH_COL.darkened(0.14 - 0.08 * pulse)
+		draw_polyline(pts, sheath_col, w_shell, true)
+		var hilite_col := CABLE_HILITE_COL
+		hilite_col.a = (0.18 + 0.24 * pulse) * (0.70 if is_leaf_tip else 1.0)
+		draw_polyline(pts, hilite_col, w_hilite, true)
+
+		var pulse_t: float = fposmod((_anim_time * speed) + phase / TAU, 1.0)
+		var pulse_pos := _sample_polyline(pts, pulse_t)
+		var pulse_col := CABLE_PULSE_COL
+		pulse_col.a = (0.20 + 0.32 * pulse) * (0.8 if is_leaf_tip else 1.0)
+		var pulse_r: float = (1.0 + 1.4 * th) * (0.85 if is_leaf_tip else 1.0)
+		draw_circle(pulse_pos, pulse_r, pulse_col)
+		draw_circle(pulse_pos, pulse_r * 0.46, Color(0.96, 1.0, 1.0, 0.45))
+
+	for node_pos: Vector2 in _cable_nodes_px:
+		draw_circle(node_pos, 2.4, Color(0.13, 0.16, 0.20, 0.96))
+		draw_circle(node_pos, 1.1, Color(0.76, 0.86, 0.94, 0.60))
+
+	var leaf_glow: float = 0.5 + 0.5 * sin(_anim_time * 4.5)
+	for tip_pos: Vector2 in _cable_leaf_tips:
+		draw_circle(tip_pos, 1.35, Color(0.72, 0.88, 1.0, 0.18 + 0.20 * leaf_glow))
+
+## Rebuild all geometry used by overlay rendering.
+## Heavy work happens only when grid contents change; draw loop reuses this cache.
+func _rebuild_visual_cache() -> void:
+	_cable_segments = []
+	_cable_nodes_px = PackedVector2Array()
+	_cable_leaf_tips = PackedVector2Array()
+	_struct_lines = []
+	_struct_rivets = []
+	_cables_active = false
+	if _current_grid == null:
+		_cache_dirty = false
+		return
+	_build_structural_cache()
+	if CABLE_ENABLE:
+		_build_cable_cache()
+	_cables_active = not _cable_segments.is_empty()
+	_cache_dirty = false
+
+func _build_structural_cache() -> void:
+	var step: float = float(CELL_SIZE + CELL_GAP)
 	for y in range(MechGrid.GRID_HEIGHT):
 		for x in range(MechGrid.GRID_WIDTH):
-			var a := Vector2i(x, y)
-			if not _is_occupied(a):
+			var pos := Vector2i(x, y)
+			if not _is_occupied_cell(pos):
 				continue
+			var tl := Vector2(float(x) * step, float(y) * step)
+			var tr := tl + Vector2(float(CELL_SIZE), 0.0)
+			var bl := tl + Vector2(0.0, float(CELL_SIZE))
+			var br := tl + Vector2(float(CELL_SIZE), float(CELL_SIZE))
+			var o: float = 4.0
+			var i: float = 11.0
 
-			var r := Vector2i(x + 1, y)
-			if _is_linkable(a, r):
-				_draw_cable_between(a, r, 1.0)
-			var d := Vector2i(x, y + 1)
-			if _is_linkable(a, d):
-				_draw_cable_between(a, d, 1.0)
+			if not _is_occupied_cell(Vector2i(x, y - 1)):
+				_add_struct_line(tl + Vector2(o, o), tr + Vector2(-o, o), STRUCT_SEAM_LIGHT, 1.2)
+			if not _is_occupied_cell(Vector2i(x - 1, y)):
+				_add_struct_line(tl + Vector2(o, o), bl + Vector2(o, -o), STRUCT_SEAM_LIGHT, 1.2)
+			if not _is_occupied_cell(Vector2i(x + 1, y)):
+				_add_struct_line(tr + Vector2(-o, o), br + Vector2(-o, -o), STRUCT_SEAM_DARK, 1.3)
+			if not _is_occupied_cell(Vector2i(x, y + 1)):
+				_add_struct_line(bl + Vector2(o, -o), br + Vector2(-o, -o), STRUCT_SEAM_DARK, 1.3)
 
-			# One-cell bridge links (A . B) make sparse builds look less disconnected.
-			var r2 := Vector2i(x + 2, y)
-			if _is_linkable(a, r2) and _is_empty_cell(Vector2i(x + 1, y)):
-				_draw_cable_between(a, r2, 0.85)
-			var d2 := Vector2i(x, y + 2)
-			if _is_linkable(a, d2) and _is_empty_cell(Vector2i(x, y + 1)):
-				_draw_cable_between(a, d2, 0.85)
+			_add_struct_line(tl + Vector2(i, float(CELL_SIZE) - i), tr + Vector2(-i, i), STRUCT_BRACE_DARK, 1.4)
+			_add_struct_line(tl + Vector2(i + 1.0, float(CELL_SIZE) - i - 1.0), tr + Vector2(-i - 1.0, i + 1.0), STRUCT_BRACE_LIGHT, 0.9)
+			_add_struct_rivet(tl + Vector2(8.0, 8.0), 1.1)
+			_add_struct_rivet(tr + Vector2(-8.0, 8.0), 1.1)
+			_add_struct_rivet(bl + Vector2(8.0, -8.0), 1.1)
+			_add_struct_rivet(br + Vector2(-8.0, -8.0), 1.1)
 
-func _draw_cable_between(a: Vector2i, b: Vector2i, thickness_scale: float) -> void:
-	var start := _cable_anchor(a, b, true)
-	var end := _cable_anchor(a, b, false)
-	var d := end - start
-	var len := d.length()
-	if len < 2.0:
+			var cell: GridCell = _current_grid.get_cell(pos)
+			if cell != null and not cell.is_empty() and cell.module.category == Module.Category.STRUCTURAL:
+				var y_mid: float = float(CELL_SIZE) * 0.5
+				_add_struct_line(tl + Vector2(10.0, y_mid), tr + Vector2(-10.0, y_mid), Color(0.76, 0.84, 0.92, 0.23), 1.3)
+
+func _build_cable_cache() -> void:
+	var nodes := _collect_module_nodes()
+	if nodes.is_empty():
 		return
-	var dir := d / len
+
+	for node_v in nodes:
+		var node: Dictionary = node_v
+		_cable_nodes_px.append(node["center"])
+
+	var root_idx := _nearest_root_index(nodes)
+	var tree_edges := _build_tree_edges(nodes, root_idx)
+	var info := _build_depth_info(nodes.size(), root_idx, tree_edges)
+	var depths: Array = info["depths"]
+	var child_counts: Array = info["child_counts"]
+	var max_depth: int = int(info["max_depth"])
+
+	for edge_v in tree_edges:
+		var edge: Dictionary = edge_v
+		var parent_idx: int = int(edge["parent"])
+		var child_idx: int = int(edge["child"])
+		var parent_node: Dictionary = nodes[parent_idx]
+		var child_node: Dictionary = nodes[child_idx]
+		var parent_center: Vector2 = parent_node["center"]
+		var child_center: Vector2 = child_node["center"]
+		var start := _module_anchor_towards(parent_node, child_center, parent_idx, child_idx, true)
+		var end := _module_anchor_towards(child_node, parent_center, parent_idx, child_idx, false)
+		var depth_i: int = int(depths[child_idx])
+		var depth_ratio: float = float(depth_i) / float(maxi(1, max_depth))
+		var thickness: float = lerpf(1.24, 0.72, depth_ratio)
+		if int(child_counts[child_idx]) == 0:
+			thickness *= 0.92
+		var seed: int = _hash_int((parent_idx + 5) * 11887 ^ (child_idx + 11) * 17749)
+		_append_branch_segment(start, end, thickness, seed, false)
+
+	if tree_edges.is_empty():
+		_append_leaf_segments(root_idx, -1, nodes, depths, max_depth)
+		return
+
+	for i in range(nodes.size()):
+		if i == root_idx:
+			continue
+		if int(child_counts[i]) != 0:
+			continue
+		var parent_idx: int = -1
+		for edge_v in tree_edges:
+			var edge: Dictionary = edge_v
+			if int(edge["child"]) == i:
+				parent_idx = int(edge["parent"])
+				break
+		_append_leaf_segments(i, parent_idx, nodes, depths, max_depth)
+
+func _collect_module_nodes() -> Array:
+	var grouped: Dictionary = {}
+	for y in range(MechGrid.GRID_HEIGHT):
+		for x in range(MechGrid.GRID_WIDTH):
+			var pos := Vector2i(x, y)
+			var cell: GridCell = _current_grid.get_cell(pos)
+			if cell == null or cell.is_empty():
+				continue
+			var module_id: int = cell.module.get_instance_id()
+			if not grouped.has(module_id):
+				grouped[module_id] = {"sum": Vector2.ZERO, "count": 0}
+			var entry: Dictionary = grouped[module_id]
+			var sum: Vector2 = entry["sum"]
+			sum += _cell_center(pos)
+			entry["sum"] = sum
+			entry["count"] = int(entry["count"]) + 1
+			grouped[module_id] = entry
+
+	var keys: Array = grouped.keys()
+	keys.sort()
+	var nodes: Array = []
+	for key_v in keys:
+		var module_id: int = int(key_v)
+		var entry: Dictionary = grouped[module_id]
+		var count: int = int(entry["count"])
+		if count <= 0:
+			continue
+		var sum: Vector2 = entry["sum"]
+		nodes.append({
+			"id": module_id,
+			"center": sum / float(count),
+		})
+	return nodes
+
+func _nearest_root_index(nodes: Array) -> int:
+	var step: float = float(CELL_SIZE + CELL_GAP)
+	var center_target := Vector2(
+		float(MechGrid.GRID_WIDTH) * step * 0.5,
+		float(MechGrid.GRID_HEIGHT) * step * 0.5
+	)
+	var best_idx: int = 0
+	var best_d: float = 1e20
+	for i in range(nodes.size()):
+		var node: Dictionary = nodes[i]
+		var center: Vector2 = node["center"]
+		var d: float = center.distance_squared_to(center_target)
+		if d < best_d:
+			best_d = d
+			best_idx = i
+	return best_idx
+
+func _build_tree_edges(nodes: Array, root_idx: int) -> Array:
+	var edges: Array = []
+	if nodes.size() <= 1:
+		return edges
+
+	var connected: Array = [root_idx]
+	var remaining: Dictionary = {}
+	for i in range(nodes.size()):
+		if i != root_idx:
+			remaining[i] = true
+
+	while not remaining.is_empty():
+		var best_parent: int = -1
+		var best_child: int = -1
+		var best_score: float = 1e20
+
+		for p_v in connected:
+			var p: int = int(p_v)
+			var p_node: Dictionary = nodes[p]
+			var p_center: Vector2 = p_node["center"]
+			var rem_keys: Array = remaining.keys()
+			rem_keys.sort()
+			for c_v in rem_keys:
+				var c: int = int(c_v)
+				var c_node: Dictionary = nodes[c]
+				var c_center: Vector2 = c_node["center"]
+				var axis_pen: float = 0.08 * float(min(abs(p_center.x - c_center.x), abs(p_center.y - c_center.y)))
+				var score: float = p_center.distance_to(c_center) + axis_pen
+				if score < best_score:
+					best_score = score
+					best_parent = p
+					best_child = c
+
+		if best_child < 0:
+			break
+		edges.append({"parent": best_parent, "child": best_child})
+		connected.append(best_child)
+		remaining.erase(best_child)
+
+	return edges
+
+func _build_depth_info(node_count: int, root_idx: int, tree_edges: Array) -> Dictionary:
+	var depths: Array = []
+	var child_counts: Array = []
+	depths.resize(node_count)
+	child_counts.resize(node_count)
+	for i in range(node_count):
+		depths[i] = -1
+		child_counts[i] = 0
+	depths[root_idx] = 0
+
+	var max_depth: int = 0
+	for edge_v in tree_edges:
+		var edge: Dictionary = edge_v
+		var p: int = int(edge["parent"])
+		var c: int = int(edge["child"])
+		var d_parent: int = int(depths[p])
+		var d_child: int = d_parent + 1
+		depths[c] = d_child
+		child_counts[p] = int(child_counts[p]) + 1
+		max_depth = maxi(max_depth, d_child)
+
+	return {
+		"depths": depths,
+		"child_counts": child_counts,
+		"max_depth": max_depth,
+	}
+
+func _module_anchor_towards(node: Dictionary, to_point: Vector2, parent_idx: int, child_idx: int, from_parent: bool) -> Vector2:
+	var center: Vector2 = node["center"]
+	var dir := to_point - center
+	if dir.length_squared() < 0.0001:
+		dir = Vector2.RIGHT
+	else:
+		dir = dir.normalized()
 	var perp := Vector2(-dir.y, dir.x)
+	var node_id: int = int(node["id"])
+	var salt: int = (17 if from_parent else 29) + parent_idx * 97 + child_idx * 151 + node_id
+	var jitter: float = (_rand01(node_id, salt) * 2.0 - 1.0) * 4.5
+	return center + dir * (float(CELL_SIZE) * 0.34) + perp * jitter
 
-	var side := -1.0 if _cable_rand(a, b, 17) < 0.5 else 1.0
-	var bend := (3.5 + 4.0 * _cable_rand(a, b, 23)) * side
-	if maxi(absi(a.x - b.x), absi(a.y - b.y)) > 1:
-		bend *= 1.35
+func _append_branch_segment(start: Vector2, end: Vector2, thickness: float, seed: int, leaf_tip: bool) -> void:
+	var delta := end - start
+	var len: float = delta.length()
+	if len < 4.0:
+		return
+	var dir := delta / len
+	var perp := Vector2(-dir.y, dir.x)
+	var side: float = -1.0 if _rand01(seed, 11) < 0.5 else 1.0
+	var bend: float = lerpf(3.2, 9.0, _rand01(seed, 13)) * side
+	if len > float(CELL_SIZE + CELL_GAP):
+		bend *= 1.25
 	var mid := (start + end) * 0.5 + perp * bend
-
+	var lead_t: float = 0.38 + _rand01(seed, 17) * 0.12
+	var tail_t: float = 0.50 + _rand01(seed, 19) * 0.12
 	var pts := PackedVector2Array([
 		start,
-		start.lerp(mid, 0.45),
+		start.lerp(mid, lead_t),
 		mid,
-		mid.lerp(end, 0.55),
+		mid.lerp(end, tail_t),
 		end,
 	])
+	_cable_segments.append({
+		"pts": pts,
+		"thickness": thickness,
+		"phase": _rand01(seed, 23) * TAU,
+		"speed": lerpf(0.20, 0.46, _rand01(seed, 29)),
+		"leaf_tip": leaf_tip,
+	})
+	if leaf_tip:
+		_cable_leaf_tips.append(end)
 
-	var w_shell := 4.4 * thickness_scale
-	var w_hilite := 1.0 * thickness_scale
-	draw_polyline(pts, CABLE_BASE_COL, w_shell + 1.6, true)
-	draw_polyline(pts, CABLE_SHEATH_COL, w_shell, true)
-	draw_polyline(pts, CABLE_HILITE_COL, w_hilite, true)
-	draw_circle(start, 2.2 * thickness_scale, Color(0.16, 0.20, 0.26, 0.95))
-	draw_circle(end,   2.2 * thickness_scale, Color(0.16, 0.20, 0.26, 0.95))
-	draw_circle(start, 0.95 * thickness_scale, Color(0.68, 0.80, 0.92, 0.75))
-	draw_circle(end,   0.95 * thickness_scale, Color(0.68, 0.80, 0.92, 0.75))
+func _append_leaf_segments(node_idx: int, parent_idx: int, nodes: Array, depths: Array, max_depth: int) -> void:
+	var node: Dictionary = nodes[node_idx]
+	var center: Vector2 = node["center"]
+	var outward := Vector2.RIGHT
+	if parent_idx >= 0:
+		var parent: Dictionary = nodes[parent_idx]
+		var parent_center: Vector2 = parent["center"]
+		var away := center - parent_center
+		if away.length_squared() > 0.0001:
+			outward = away.normalized()
 
-func _cable_anchor(a: Vector2i, b: Vector2i, from_a: bool) -> Vector2:
-	var src := a if from_a else b
-	var dst := b if from_a else a
-	var step := float(CELL_SIZE + CELL_GAP)
-	var center := Vector2(float(src.x) * step + float(CELL_SIZE) * 0.5, float(src.y) * step + float(CELL_SIZE) * 0.5)
-	var delta := dst - src
-	var inset := float(CELL_SIZE) * 0.28
-	var jitter := (_cable_rand(a, b, 41 if from_a else 43) * 2.0 - 1.0) * 5.0
+	var depth_i: int = int(depths[node_idx])
+	var depth_ratio: float = float(depth_i) / float(maxi(1, max_depth))
+	var node_id: int = int(node["id"])
+	var base_seed: int = _hash_int(node_id ^ (node_idx + 3) * 809 ^ (parent_idx + 11) * 1237)
+	var leaf_count: int = 1 + int(_rand01(base_seed, 31) > 0.64)
 
-	if absi(delta.x) >= absi(delta.y):
-		var sx: float = sign(float(delta.x))
-		center.x += sx * inset
-		center.y += jitter
-	else:
-		var sy: float = sign(float(delta.y))
-		center.y += sy * inset
-		center.x += jitter
-	return center
+	for i in range(leaf_count):
+		var seed: int = _hash_int(base_seed ^ (i + 1) * 2971)
+		var angle: float = deg_to_rad(28.0 + 50.0 * _rand01(seed, 37))
+		if _rand01(seed, 41) < 0.5:
+			angle = -angle
+		var dir := outward.rotated(angle)
+		var start := center + dir * (float(CELL_SIZE) * 0.27)
+		var len_px: float = lerpf(11.0, 20.0, _rand01(seed, 43)) * lerpf(1.0, 0.74, depth_ratio)
+		var end := start + dir * len_px
+		var perp := Vector2(-dir.y, dir.x)
+		var mid := start.lerp(end, 0.55) + perp * ((_rand01(seed, 47) * 2.0 - 1.0) * 2.4)
+		var pts := PackedVector2Array([start, mid, end])
+		_cable_segments.append({
+			"pts": pts,
+			"thickness": lerpf(0.48, 0.38, depth_ratio),
+			"phase": _rand01(seed, 53) * TAU,
+			"speed": lerpf(0.30, 0.62, _rand01(seed, 59)),
+			"leaf_tip": true,
+		})
+		_cable_leaf_tips.append(end)
 
-func _is_linkable(a: Vector2i, b: Vector2i) -> bool:
-	if not _in_bounds(a) or not _in_bounds(b):
+func _sample_polyline(pts: PackedVector2Array, t: float) -> Vector2:
+	if pts.is_empty():
+		return Vector2.ZERO
+	if pts.size() == 1:
+		return pts[0]
+	var total_len: float = 0.0
+	for i in range(pts.size() - 1):
+		total_len += pts[i].distance_to(pts[i + 1])
+	if total_len <= 0.0001:
+		return pts[pts.size() - 1]
+	var target: float = clamp(t, 0.0, 1.0) * total_len
+	var run: float = 0.0
+	for i in range(pts.size() - 1):
+		var seg_len: float = pts[i].distance_to(pts[i + 1])
+		if run + seg_len >= target:
+			var lt: float = 0.0 if seg_len <= 0.0001 else (target - run) / seg_len
+			return pts[i].lerp(pts[i + 1], lt)
+		run += seg_len
+	return pts[pts.size() - 1]
+
+func _offset_polyline(pts: PackedVector2Array, delta: Vector2) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for p: Vector2 in pts:
+		out.append(p + delta)
+	return out
+
+func _add_struct_line(a: Vector2, b: Vector2, col: Color, w: float) -> void:
+	_struct_lines.append({"a": a, "b": b, "c": col, "w": w})
+
+func _add_struct_rivet(p: Vector2, r: float) -> void:
+	_struct_rivets.append({"p": p, "r": r})
+
+func _is_occupied_cell(pos: Vector2i) -> bool:
+	if _current_grid == null or not _in_bounds(pos):
 		return false
-	var ca := _current_grid.get_cell(a)
-	var cb := _current_grid.get_cell(b)
-	if ca == null or cb == null or ca.is_empty() or cb.is_empty():
-		return false
-	return ca.module != cb.module
-
-func _is_occupied(pos: Vector2i) -> bool:
-	if not _in_bounds(pos):
-		return false
-	var cell := _current_grid.get_cell(pos)
+	var cell: GridCell = _current_grid.get_cell(pos)
 	return cell != null and not cell.is_empty()
-
-func _is_empty_cell(pos: Vector2i) -> bool:
-	if not _in_bounds(pos):
-		return false
-	var cell := _current_grid.get_cell(pos)
-	return cell != null and cell.is_empty()
 
 func _in_bounds(pos: Vector2i) -> bool:
 	return pos.x >= 0 and pos.x < MechGrid.GRID_WIDTH and pos.y >= 0 and pos.y < MechGrid.GRID_HEIGHT
 
-func _cable_rand(a: Vector2i, b: Vector2i, salt: int) -> float:
-	var h: int = int((a.x + 1) * 73856093) ^ int((a.y + 3) * 19349663)
-	h ^= int((b.x + 5) * 83492791) ^ int((b.y + 7) * 265443576)
-	h ^= int(salt * 97531)
-	h = absi(h % 1000)
-	return float(h) / 999.0
+func _cell_center(pos: Vector2i) -> Vector2:
+	var step: float = float(CELL_SIZE + CELL_GAP)
+	return Vector2(
+		float(pos.x) * step + float(CELL_SIZE) * 0.5,
+		float(pos.y) * step + float(CELL_SIZE) * 0.5
+	)
+
+func _hash_int(v: int) -> int:
+	var h: int = v
+	h = int(h * 1664525 + 1013904223)
+	h ^= (h >> 16)
+	h = int(h * 2246822519)
+	h ^= (h >> 13)
+	return absi(h)
+
+func _rand01(a: int, b: int = 0) -> float:
+	var h: int = _hash_int(a ^ int(b * 1103515245))
+	return float(h % 10000) / 9999.0
 
 # ── Internal rendering ──────────────────────────────────────────────────────
 
