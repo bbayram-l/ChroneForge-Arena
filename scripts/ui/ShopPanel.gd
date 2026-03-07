@@ -106,7 +106,7 @@ func _build_card(mod: Module, index: int) -> Panel:
 		# Fill the img_bg completely — no manual coordinate math needed.
 		img.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		img.texture      = load(img_path)
-		img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		img.mouse_filter = MOUSE_FILTER_IGNORE
 		img_bg.add_child(img)   # child of img_bg, not card
 
