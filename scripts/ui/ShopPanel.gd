@@ -84,30 +84,32 @@ func refresh_affordability() -> void:
 
 func _build_card(mod: Module, index: int) -> Panel:
 	var card := Panel.new()
-	card.position = Vector2(float(index * (CARD_W + GAP)), 0.0)
-	card.size     = Vector2(float(CARD_W), float(CARD_H))
+	card.position      = Vector2(float(index * (CARD_W + GAP)), 0.0)
+	card.size          = Vector2(float(CARD_W), float(CARD_H))
+	card.clip_contents = true
 	_apply_card_style(card, mod.rarity, false, false)
 
 	# ── Image area ──────────────────────────────────────────────────────────
 	var cat_col: Color = MechGridView.CATEGORY_COLORS.get(mod.category, Color("333333"))
 
 	var img_bg := ColorRect.new()
-	img_bg.position     = Vector2(6.0, 6.0)
-	img_bg.size         = Vector2(float(CARD_W - 12), float(IMAGE_H))
-	img_bg.color        = cat_col
-	img_bg.modulate.a   = 0.22
-	img_bg.mouse_filter = MOUSE_FILTER_IGNORE
+	img_bg.position      = Vector2(6.0, 6.0)
+	img_bg.size          = Vector2(float(CARD_W - 12), float(IMAGE_H))
+	img_bg.color         = cat_col
+	img_bg.modulate.a    = 0.22
+	img_bg.mouse_filter  = MOUSE_FILTER_IGNORE
+	img_bg.clip_contents = true
 	card.add_child(img_bg)
 
 	var img_path := "res://assets/modules/%s.png" % mod.id
 	if ResourceLoader.exists(img_path):
 		var img := TextureRect.new()
-		img.position     = Vector2(6.0, 6.0)
-		img.size         = Vector2(float(CARD_W - 12), float(IMAGE_H))
+		# Fill the img_bg completely — no manual coordinate math needed.
+		img.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		img.texture      = load(img_path)
 		img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		img.mouse_filter = MOUSE_FILTER_IGNORE
-		card.add_child(img)
+		img_bg.add_child(img)   # child of img_bg, not card
 
 	# ── Category badge (top-right, over image) ───────────────────────────────
 	var badge_bg := ColorRect.new()
