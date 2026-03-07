@@ -1,6 +1,31 @@
 We’re not making “another autobattler.”
 We’re building something that pushes the genre forward.
 
+---
+
+# MCP-first execution (required)
+
+Use MCP as the default way to validate gameplay, UI, and simulation behavior.
+Static code reading is not enough for behavior claims.
+
+- For combat, shop, input, UI, serialization, and replay changes:
+  - run at least one MCP-assisted runtime check before marking work complete.
+  - confirm the exact player-facing behavior in-game.
+- Prefer MCP runtime evidence (state queries, logs, screenshots) over assumptions.
+- If MCP cannot be run in the current environment:
+  - run a headless Godot smoke check as fallback.
+  - explicitly report that MCP verification could not be executed.
+
+## MCP config locations
+
+- Project config: `.mcp.json`
+- Codex global config: `%USERPROFILE%\\.codex\\config.toml`
+- MCP server command: `node D:/GameDev/godot-runtime-bridge/mcp/index.js`
+
+Keep these aligned when tool paths change.
+
+---
+
 I’m merging two of the strongest ideas:
 
 * **Scrapyard Mechs** (physics + modular grid)

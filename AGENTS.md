@@ -10,6 +10,30 @@ git push -u origin Codex/explain-codebase-mm9o56vfv7thwb49-2Kti4
 
 ---
 
+## MCP-first workflow (required)
+
+Use the Godot Runtime Bridge MCP server as the default runtime verification path.
+Static code inspection alone is not enough for gameplay/UI behavior claims.
+
+- For changes in combat, shop, input, UI, serialization, or replay:
+  - run at least one MCP-assisted runtime check before declaring done.
+  - verify the exact player-facing behavior in the running game.
+- Prefer MCP observations (scene/runtime state, command responses, screenshots/logs)
+  over assumptions from source code.
+- If MCP is unavailable in the current environment:
+  - run a headless Godot smoke check as fallback.
+  - explicitly report that MCP verification could not be executed.
+
+### MCP config sources
+
+- Project-local client config: `.mcp.json`
+- Codex global config: `%USERPROFILE%\\.codex\\config.toml`
+- Server: `godot-runtime-bridge` (`node D:/GameDev/godot-runtime-bridge/mcp/index.js`)
+
+Keep these in sync when paths or executable names change.
+
+---
+
 ## Project summary
 Deterministic, grid-based roguelike auto-battler. Players build modular mechs on a 6×6 grid, balance power / heat / torque / paradox, and fight asynchronous PvP opponents via snapshot replay.
 
