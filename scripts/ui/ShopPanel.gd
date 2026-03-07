@@ -39,12 +39,15 @@ func show_offers(offers: Array[Module]) -> void:
 	for card in _cards:
 		card.queue_free()
 	_cards.clear()
-	_offers = offers.duplicate()
+	_offers.clear()
+	# Clone per-slot offers so duplicate IDs don't alias UI state.
+	for offered: Module in offers:
+		_offers.append(offered.duplicate() as Module)
 	_cost_labels.clear()
 	_hover_mod    = null
 	_selected_mod = null
-	for i in range(offers.size()):
-		var card := _build_card(offers[i], i)
+	for i in range(_offers.size()):
+		var card := _build_card(_offers[i], i)
 		add_child(card)
 		_cards.append(card)
 
