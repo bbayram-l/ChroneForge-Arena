@@ -740,6 +740,10 @@ func _stop_replay() -> void:
 	_replay_timer.stop()
 	_replay_panel.visible  = false
 	_results_panel.visible = true
+	# If run is over, results panel is non-interactive — re-show run-over overlay.
+	if phase == Phase.RUN_OVER:
+		_results_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_run_over_panel.visible     = true
 
 func _build_run_over_panel() -> Control:
 	var panel := Panel.new()
@@ -772,11 +776,21 @@ func _build_run_over_panel() -> Control:
 	stats.modulate = Color(0.85, 0.85, 0.85)
 	panel.add_child(stats)
 
+	# Two buttons side by side: VIEW LAST FIGHT | RESTART
+	var view_btn := Button.new()
+	view_btn.position = Vector2(60.0, 270.0)
+	view_btn.size     = Vector2(240.0, 44.0)
+	view_btn.text     = "▶  VIEW LAST FIGHT"
+	view_btn.add_theme_font_size_override("font_size", 14)
+	view_btn.pressed.connect(_on_view_last_fight_pressed)
+	panel.add_child(view_btn)
+
 	var restart := Button.new()
-	restart.position = Vector2(250.0, 270.0)
-	restart.size     = Vector2(200.0, 44.0)
+	restart.position = Vector2(400.0, 270.0)
+	restart.size     = Vector2(240.0, 44.0)
 	restart.text     = "RESTART"
 	restart.add_theme_font_size_override("font_size", 16)
+	restart.add_theme_color_override("font_color", Color("ff6060"))
 	restart.pressed.connect(_on_restart_pressed)
 	panel.add_child(restart)
 
@@ -1151,7 +1165,6 @@ func _on_combat_ended(result: Dictionary) -> void:
 func _enter_run_over() -> void:
 	phase = Phase.RUN_OVER
 	GameLogger.log_run_end(GameState.current_round - 1, GameState.total_wins, GameState.total_losses, GameState.mmr)
-	# Leave _results_panel visible — run_over panel overlays it so player sees the last fight
 	_action_btn.disabled = true
 	var stats_lbl: Label = _run_over_panel.get_node("StatsLabel")
 	stats_lbl.text = (
@@ -1164,6 +1177,11 @@ func _enter_run_over() -> void:
 		GameState.total_losses,
 		GameState.mmr,
 	]
+	# Move run_over to last canvas child so it receives input before results_panel.
+	# (Godot 4 Control input processes reverse tree order — last child wins.)
+	_canvas.move_child(_run_over_panel, _canvas.get_child_count() - 1)
+	# Disable results panel mouse so it cannot steal clicks from run_over overlay.
+	_results_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_run_over_panel.visible = true
 
 func _on_action_pressed() -> void:
@@ -1171,10 +1189,17 @@ func _on_action_pressed() -> void:
 		Phase.SHOP_PHASE: _start_combat()
 		Phase.ROUND_END:  _enter_shop_phase()
 
+func _on_view_last_fight_pressed() -> void:
+	# Temporarily hide run-over overlay so player can read results / watch replay.
+	# Restore results panel interactivity; run-over comes back after replay ends.
+	_run_over_panel.visible     = false
+	_results_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+
 func _on_restart_pressed() -> void:
-	_run_over_panel.visible  = false
-	_results_panel.visible   = false
-	_archetype_panel.visible = true
+	_run_over_panel.visible     = false
+	_results_panel.visible      = false
+	_results_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_archetype_panel.visible    = true
 
 # ── Shop interaction ───────────────────────────────────────────────────────
 
