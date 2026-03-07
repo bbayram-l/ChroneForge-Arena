@@ -14,6 +14,13 @@
   - **Light Frame** — unchanged at cost **2**, HP **10**.
     Remains the baseline common structural filler.
 
+### UI / Visual Fixes
+
+- **Module art fit and chamfer pass (grid):**
+  - Grid module art now uses **aspect-covered fit** with **0 overscan** to fill the cell without tiny framing.
+  - Removed the extra art corner overlay layer that caused square-looking artifacts.
+  - Consolidated chamfer clipping to a single anti-aliased shader mask on the module image.
+
 ---
 
 ## [0.9.2] — Balance Pass v3 — 2026-03-06

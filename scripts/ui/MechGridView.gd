@@ -18,7 +18,7 @@ const CELL_OUTER_CHAMFER: int = 10
 const CELL_INNER_CHAMFER: int = 7
 const CELL_ART_INSET: float = 1.0
 const CELL_ART_BOTTOM_GAP: float = 1.0
-const CELL_ART_OVERSCAN: float = 11.0
+const CELL_ART_OVERSCAN: float = 0.0
 
 const CATEGORY_COLORS: Dictionary = {
 	Module.Category.STRUCTURAL: Color("6b5a3e"),
@@ -69,7 +69,6 @@ var _struct_lines: Array     = []           # [{a,b,c,w}]
 var _struct_rivets: Array    = []           # [{p,r}]
 var _module_texture_cache: Dictionary = {}  # module_id -> Texture2D|null
 var _art_mask_material: ShaderMaterial = null
-var _art_overlay_material: ShaderMaterial = null
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -160,7 +159,7 @@ func _build() -> void:
 			art.offset_right = CELL_ART_OVERSCAN
 			art.offset_bottom = CELL_ART_OVERSCAN
 			art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			art.stretch_mode = TextureRect.STRETCH_SCALE
+			art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 			art.mouse_filter = MOUSE_FILTER_IGNORE
 			art.material = _get_art_mask_material()
 			art_frame.add_child(art)
@@ -174,14 +173,6 @@ func _build() -> void:
 			art_fallback.add_theme_color_override("font_color", Color(0.76, 0.84, 0.92, 0.40))
 			art_fallback.mouse_filter = MOUSE_FILTER_IGNORE
 			art_frame.add_child(art_fallback)
-
-			var art_mask := ColorRect.new()
-			art_mask.name = "ArtMaskOverlay"
-			art_mask.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-			art_mask.color = Color(0.0, 0.0, 0.0, 0.0)
-			art_mask.mouse_filter = MOUSE_FILTER_IGNORE
-			art_mask.material = _get_art_overlay_material()
-			art_frame.add_child(art_mask)
 
 			var art_edge := Panel.new()
 			art_edge.name = "ArtEdge"
@@ -885,7 +876,6 @@ func _redraw_cell(pos: Vector2i) -> void:
 	var art_frame: Panel = panel.get_node("OuterFrame/InnerPlate/ArtFrame") as Panel
 	var art: TextureRect = panel.get_node("OuterFrame/InnerPlate/ArtFrame/Art") as TextureRect
 	var art_fallback: Label = panel.get_node("OuterFrame/InnerPlate/ArtFrame/ArtFallback") as Label
-	var art_mask: ColorRect = panel.get_node("OuterFrame/InnerPlate/ArtFrame/ArtMaskOverlay") as ColorRect
 	var art_edge: Panel = panel.get_node("OuterFrame/InnerPlate/ArtFrame/ArtEdge") as Panel
 	var info_bg: Panel = panel.get_node("OuterFrame/InnerPlate/InfoBg") as Panel
 	var label: Label = panel.get_node("OuterFrame/InnerPlate/InfoLabel") as Label
@@ -924,7 +914,6 @@ func _redraw_cell(pos: Vector2i) -> void:
 
 	_apply_hybrid_style(outer_frame, inner_plate, final_color, overlay_border, overlay_border_w)
 	_apply_art_frame_style(art_frame, final_color)
-	_apply_art_mask_overlay(art_mask, final_color)
 	_apply_art_edge_style(art_edge, final_color)
 	if cell.is_empty():
 		if art != null:
@@ -1090,11 +1079,6 @@ func _apply_art_frame_style(art_frame: Panel, color: Color) -> void:
 	art_style.border_width_bottom = 0
 	art_frame.add_theme_stylebox_override("panel", art_style)
 
-func _apply_art_mask_overlay(art_mask: ColorRect, color: Color) -> void:
-	if art_mask == null:
-		return
-	art_mask.color = color.darkened(0.34)
-
 func _apply_art_edge_style(art_edge: Panel, color: Color) -> void:
 	if art_edge == null:
 		return
@@ -1117,39 +1101,22 @@ func _get_art_mask_material() -> ShaderMaterial:
 		return _art_mask_material
 	var shader := Shader.new()
 	shader.code = "shader_type canvas_item;\n" \
-		+ "uniform float cut = 0.14;\n" \
+		+ "uniform float cut = 0.115;\n" \
+		+ "uniform float feather = 0.018;\n" \
 		+ "void fragment() {\n" \
 		+ "    vec4 col = texture(TEXTURE, UV);\n" \
-		+ "    bool outside = false;\n" \
-		+ "    if ((UV.x + UV.y) < cut) outside = true;\n" \
-		+ "    if (((1.0 - UV.x) + UV.y) < cut) outside = true;\n" \
-		+ "    if ((UV.x + (1.0 - UV.y)) < cut) outside = true;\n" \
-		+ "    if (((1.0 - UV.x) + (1.0 - UV.y)) < cut) outside = true;\n" \
-		+ "    if (outside) { col.a = 0.0; }\n" \
+		+ "    float d0 = UV.x + UV.y;\n" \
+		+ "    float d1 = (1.0 - UV.x) + UV.y;\n" \
+		+ "    float d2 = UV.x + (1.0 - UV.y);\n" \
+		+ "    float d3 = (1.0 - UV.x) + (1.0 - UV.y);\n" \
+		+ "    float min_d = min(min(d0, d1), min(d2, d3));\n" \
+		+ "    float alpha_mul = smoothstep(cut, cut + feather, min_d);\n" \
+		+ "    col.a *= alpha_mul;\n" \
 		+ "    COLOR = col;\n" \
 		+ "}\n"
 	_art_mask_material = ShaderMaterial.new()
 	_art_mask_material.shader = shader
 	return _art_mask_material
-
-func _get_art_overlay_material() -> ShaderMaterial:
-	if _art_overlay_material != null:
-		return _art_overlay_material
-	var shader := Shader.new()
-	shader.code = "shader_type canvas_item;\n" \
-		+ "uniform float cut = 0.16;\n" \
-		+ "void fragment() {\n" \
-		+ "    vec4 col = COLOR;\n" \
-		+ "    bool outside = false;\n" \
-		+ "    if ((UV.x + UV.y) < cut) outside = true;\n" \
-		+ "    if (((1.0 - UV.x) + UV.y) < cut) outside = true;\n" \
-		+ "    if ((UV.x + (1.0 - UV.y)) < cut) outside = true;\n" \
-		+ "    if (((1.0 - UV.x) + (1.0 - UV.y)) < cut) outside = true;\n" \
-		+ "    COLOR = outside ? col : vec4(col.rgb, 0.0);\n" \
-		+ "}\n"
-	_art_overlay_material = ShaderMaterial.new()
-	_art_overlay_material.shader = shader
-	return _art_overlay_material
 
 func _apply_style(panel: Panel, color: Color, border: Color = Color.TRANSPARENT, border_w: int = 1) -> void:
 	var style := StyleBoxFlat.new()
